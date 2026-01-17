@@ -1,3 +1,13 @@
+// Home screen UI for the Post Prep app.
+//
+// このファイルはアプリのメイン画面 (ホーム) を定義します。
+// - ヘッダー (ユーザー情報)
+// - フィルターチップ (All / Scheduled / Drafts / Posted)
+// - 投稿のカードリスト (サンプルデータを使用)
+// - 下部ナビゲーションと FAB
+//
+// 各プライベートメソッドはウィジェットの一部を組み立てる責務を持ち、
+// UIの再利用性が高くなるように分割されています。
 import 'package:flutter/material.dart';
 import '../services/draft_store.dart';
 import 'post_prep_screen.dart';
@@ -17,6 +27,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const Color primary = Color(0xFF00FFCC);
 
+  // _drafts: 保存された下書きのリスト（DraftStore から読み込み）
+  // _loading: データ読み込み中にインジケータを表示するためのフラグ
+  // _activeFilter: チップで選択されているフィルタ名
+
   @override
   void initState() {
     super.initState();
@@ -24,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _load() async {
+    // DraftStore から下書きを読み込む。読み込み中は _loading を true にして
+    // プログレスインジケータを表示する。
     setState(() => _loading = true);
     final drafts = await DraftStore().loadDrafts();
     setState(() {
@@ -33,11 +49,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _delete(String id) async {
+    // 指定した id の下書きを削除し、リストを再読み込みする。
     await DraftStore().deleteDraft(id);
     await _load();
   }
 
   void _openEditor({String? initialRaw}) async {
+    // PostPrepScreen を開き、戻ってきたら下書きリストを再読み込みする。
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostPrepScreen(initialRaw: initialRaw)));
     await _load();
   }

@@ -1,3 +1,10 @@
+// Post 編集画面: ユーザーが生のイベント情報を貼り付け、
+// キャプションを生成・コピー・共有・下書き保存できる画面。
+//
+// 主な責務:
+// - 入力テキストの管理 (TextEditingController)
+// - CaptionBuilder を使ったキャプション生成
+// - 生成結果のコピー / 共有 / 下書き保存
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -21,6 +28,8 @@ class _PostPrepScreenState extends State<PostPrepScreen> {
   @override
   void initState() {
     super.initState();
+    // TextEditingController を初期化する。渡された initialRaw があれば
+    // テキストフィールドにセットして編集を開始できるようにする。
     _controller = TextEditingController(text: widget.initialRaw ?? '');
   }
 
@@ -31,6 +40,8 @@ class _PostPrepScreenState extends State<PostPrepScreen> {
   }
 
   void _generate() {
+    // キャプションを生成する。簡易同期処理のため非同期処理は不要だが
+    // UI 表示のためフラグで状態管理を行う。
     setState(() => _isGenerating = true);
     final raw = _controller.text.trim();
     final out = CaptionBuilder.buildCaption(raw);
@@ -51,6 +62,8 @@ class _PostPrepScreenState extends State<PostPrepScreen> {
   }
 
   Future<void> _saveDraft({String status = 'draft'}) async {
+    // 下書きを SharedPreferences に保存する。既に生成済みのキャプションが
+    // なければ再生成して保存する。id はミリ秒タイムスタンプで一意にする。
     final raw = _controller.text.trim();
     final generated = _generated.isNotEmpty ? _generated : CaptionBuilder.buildCaption(raw);
     final id = DateTime.now().millisecondsSinceEpoch.toString();
