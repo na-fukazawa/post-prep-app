@@ -1,159 +1,175 @@
-// Home screen UI for the Post Prep app.
-//
-// このファイルはアプリのメイン画面 (ホーム) を定義します。
-// - ヘッダー (ユーザー情報)
-// - フィルターチップ (All / Scheduled / Drafts / Posted)
-// - 投稿のカードリスト (サンプルデータを使用)
-// - 下部ナビゲーションと FAB
-//
-// 各プライベートメソッドはウィジェットの一部を組み立てる責務を持ち、
-// UIの再利用性が高くなるように分割されています。
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/draft_providers.dart';
 import '../services/draft_store.dart';
 import 'post_prep_screen.dart';
 
-// A Home screen visually inspired by the provided Tailwind HTML.
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  List<Draft> _drafts = [];
-  bool _loading = true;
-  String _activeFilter = 'すべて';
-
   static const Color primary = Color(0xFF00FFCC);
-
-  // _drafts: 保存された下書きのリスト（DraftStore から読み込み）
-  // _loading: データ読み込み中にインジケータを表示するためのフラグ
-  // _activeFilter: チップで選択されているフィルタ名
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    // DraftStore から下書きを読み込む。読み込み中は _loading を true にして
-    // プログレスインジケータを表示する。
-    setState(() => _loading = true);
-    final drafts = await DraftStore().loadDrafts();
-    setState(() {
-      _drafts = drafts;
-      _loading = false;
-    });
-  }
-
-  Future<void> _delete(String id) async {
-    // 指定した id の下書きを削除し、リストを再読み込みする。
-    await DraftStore().deleteDraft(id);
-    await _load();
-  }
-
-  void _openEditor({String? initialRaw}) async {
-    // PostPrepScreen を開き、戻ってきたら下書きリストを再読み込みする。
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostPrepScreen(initialRaw: initialRaw)));
-    await _load();
-  }
+  static const Color backgroundLight = Color(0xFFF0F2F4);
+  static const Color backgroundDark = Color(0xFF0E121A);
+  static const Color surfaceDark = Color(0xFF161B26);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(draftFilterProvider);
+    final draftsAsync = ref.watch(draftListProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF0E121A)
-          : const Color(0xFFF0F2F4),
+      backgroundColor: isDark ? backgroundDark : backgroundLight,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildFilterChips(),
-            Expanded(child: _buildMainList()),
-          ],
+        child: draftsAsync.when(
+          data: (drafts) {
+            final filtered = _applyFilter(drafts, filter);
+            return RefreshIndicator(
+              onRefresh: () => ref.read(draftListProvider.notifier).refresh(),
+              child: _buildBody(context, ref, filtered, filter, isDark),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => _buildErrorState(context, ref),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: primary,
-        label: const Icon(Icons.add, color: Colors.black),
-        onPressed: () => _openEditor(),
-      ),
-      bottomNavigationBar: _buildBottomNav(),
+      floatingActionButton: _buildFab(context, ref),
+      bottomNavigationBar: _buildBottomNav(context, isDark),
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  List<Draft> _applyFilter(List<Draft> drafts, DraftFilter filter) {
+    switch (filter) {
+      case DraftFilter.scheduled:
+        return drafts.where((draft) => draft.status == 'scheduled').toList();
+      case DraftFilter.draft:
+        return drafts.where((draft) => draft.status == 'draft').toList();
+      case DraftFilter.posted:
+        return drafts.where((draft) => draft.status == 'posted').toList();
+      case DraftFilter.all:
+      default:
+        return drafts;
+    }
+  }
+
+  Widget _buildErrorState(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundImage: NetworkImage(
-                        'https://lh3.googleusercontent.com/aida-public/AB6AXuDkZnpuu37MCrLMtuR5Sq1ISnQ-gFH3geF6WA4yaFSxqdU6rnU6knowKw7Xc3g19RkxnHnFILbUQVPNDafWzYhE8iB1NhGsxAf04KDtzc136ABWbLf4dhut50PyY_BdaGBO5fpFsvj60IsQnDblbGeEdx5Y4uLmBiLbzVez1GHPfeeJi6Uoh_Iby2sqKaDGkoru751see4zeAa--lQSP8VIrhZUkd71V1K0jyB1y1Iv7EDOu8wpi4JJbnXrVTle3tr24nai66JijSdm'),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(color: primary, shape: BoxShape.circle, border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2)),
-                    ),
-                  )
-                ],
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('こんにちは、サラ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 2),
-                  Text('告知の準備はできましたか？', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              )
-            ],
+          const Text('読み込みに失敗しました。', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: () => ref.read(draftListProvider.notifier).refresh(),
+            child: const Text('再読み込み'),
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
-          )
         ],
       ),
     );
   }
 
-  Widget _buildFilterChips() {
-    final chips = ['すべて', '予約', '下書き', '投稿済み'];
+  Widget _buildBody(BuildContext context, WidgetRef ref, List<Draft> drafts, DraftFilter filter, bool isDark) {
+    final sections = _buildSections(drafts);
+
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: _buildHeader(context, isDark)),
+        SliverToBoxAdapter(child: _buildFilterChips(ref, filter, isDark)),
+        if (drafts.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _buildEmptyState(context, isDark),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 140),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(
+                [
+                  for (final section in sections) ...[
+                    _sectionHeader(section.title),
+                    const SizedBox(height: 8),
+                    for (final draft in section.items) ...[
+                      _announcementCard(
+                        context,
+                        ref,
+                        draft: draft,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '投稿予定一覧',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'ローカル保存のスケジュール',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white54 : Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(WidgetRef ref, DraftFilter active, bool isDark) {
     return SizedBox(
       height: 56,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
         scrollDirection: Axis.horizontal,
-        itemCount: chips.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final label = chips[i];
-          final active = label == _activeFilter;
+        itemCount: DraftFilter.values.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final filter = DraftFilter.values[index];
+          final selected = filter == active;
+          final chipColor = selected ? primary : Colors.transparent;
+          final borderColor = isDark ? Colors.white12 : Colors.grey.shade300;
+          final textColor = selected
+              ? Colors.black
+              : (isDark ? Colors.white70 : Colors.grey.shade700);
+
           return GestureDetector(
-            onTap: () => setState(() => _activeFilter = label),
+            onTap: () => ref.read(draftFilterProvider.notifier).state = filter,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
               decoration: BoxDecoration(
-                color: active ? primary : Colors.transparent,
+                color: chipColor,
                 borderRadius: BorderRadius.circular(12),
-                border: active ? null : Border.all(color: Colors.grey.shade300),
-                boxShadow: active ? [BoxShadow(color: primary.withOpacity(0.15), blurRadius: 12)] : null,
+                border: selected ? null : Border.all(color: borderColor),
+                boxShadow: selected
+                    ? [BoxShadow(color: primary.withOpacity(0.2), blurRadius: 16)]
+                    : null,
               ),
               child: Center(
-                child: Text(label, style: TextStyle(color: active ? Colors.black : Colors.grey.shade700, fontWeight: active ? FontWeight.bold : FontWeight.w500)),
+                child: Text(
+                  filter.label,
+                  style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+                ),
               ),
             ),
           );
@@ -162,107 +178,74 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMainList() {
-    // Build a scrollable view with sections and a few example cards.
-    return _loading
-        ? const Center(child: CircularProgressIndicator())
-        : CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate(
-                    [
-                      _sectionHeader('今週'),
-                      const SizedBox(height: 8),
-                      _postCard(
-                        title: 'The Velvet Loungeでライブ',
-                        subtitle: 'ジャズナイト特別出演。',
-                        dateLabel: '明日 20:00',
-                        imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA1-L2pzadFAl73MEesP1ktDxNsaeVSg79ZDB82JN8bKuxQsRPBH_pdpZrmblPii1CQcIUs131V4-qCVCVQOrYm1QKqGlKdfBdRjjMC1cfbeQp41--t0ygT2XzVTS8mMXb7iF721S1JVtD_nylEF1B6OZkfcXUdaCZ1lWhW5cOLBlcrtYe4b4aGXhjnXNLG6TRDYCajAnkts7zN05rGF55hEuISADKRZVHwckKF4H2Uldwl2TeCXz7dNL95heNoq0dmFYPFZwXSuFPc',
-                        primary: primary,
-                        onTap: () {},
-                      ),
-                      const SizedBox(height: 12),
-                      _postCard(
-                        title: 'ネオン・ナイツ・フェス',
-                        subtitle: '早割チケットの告知。',
-                        dateLabel: '下書き • 11月2日',
-                        imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzh9YKMlrsA0RKU6EFe4jj-sxLQCOvnV-vq5sjpbP5XK1NEzvb8gPYs1OsEvvmmFGQY68DWUPKDHXF8mPsatSiLkUrRy1jRmdMoN2gElPUg2dSNP4MMlemea4AjBSj9lHX1nCqsbTIPLBHqth7QUsTsxOOo2HOYJeEF1uiRfEApqh3_Nz8GShw1O75AiW6lniMJZQhz6nsfjYPmk78WdoCohFFYoHAufZIFepp71eSQsFEU-mwXmsYbqcnWa1nhc4PlVP_rgQ2cGCX',
-                        primary: Colors.grey,
-                        onTap: () {},
-                      ),
-                      const SizedBox(height: 20),
-                      _sectionHeader('今後の予定'),
-                      const SizedBox(height: 8),
-                      _postCard(
-                        title: 'アコースティック・セッション告知',
-                        subtitle: 'ティーザー動画を投稿。',
-                        dateLabel: '11月15日 17:00',
-                        imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBxXiBK-BrGdvUoD_GZrj8MYhOyN0AtHW4UXWpbWvMLv0mowtXUN4iUCo9y8pQQC-zWPoHBPgTVt-gAUk2RdP8mkx423v9cSRvGrl8XR85OE8ofV5XBCcuSmxcjlFiyu4ewbMs-EZ11COSAGnNIq0QCB__t7nz__9l9kdnmmdrnfdUs-96s5S_3AHQ5XWV6YWZIEcWNgMKO2l36Dh5G-q8nEkQhhSrvxYxZWWQnbaVwyOdJ4LhkyljjoTENIczndPcnYiZ0TeOnVpn4',
-                        primary: primary,
-                        onTap: () {},
-                      ),
-                      const SizedBox(height: 12),
-                      _postCard(
-                        title: 'グッズ第2弾',
-                        subtitle: '投稿に失敗しました。接続を確認してください。',
-                        dateLabel: null,
-                        imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5eIpaRB6EVvGKbIgEEYMseCzGHUYtQ6FHbyxwXag82A8wwj54JaeFYaM3xTrtliWkp2lpty6TFIvFzzeS-LI6vJYDUggJCQnyxqPEFdOb-KhuS751adRnkl9PRnJiMqaXMwDeYSU1t2W4ixUpMudDOQ8d82udY_SW7uEObRtpGQnnMINOb0b68p-Fzq1oBQ0Yufg8UzjZcm7vC9bwhy6fIMvD-fddWAwt0oRddq6H977OxubNZZ9KVYEeyNMm2xkaxRaSD60Uj_Q4',
-                        primary: Colors.red,
-                        error: true,
-                        onTap: () {},
-                      ),
-                      const SizedBox(height: 120),
-                    ],
-                  ),
-                ),
-              )
-            ],
-          );
-  }
-
-  Widget _sectionHeader(String text) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(text.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-      ],
+  Widget _buildEmptyState(BuildContext context, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          'まだ告知がありません。新規作成から追加しましょう。',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black54,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _postCard({required String title, required String subtitle, String? dateLabel, required String imageUrl, required Color primary, bool error = false, VoidCallback? onTap}) {
+  Widget _sectionHeader(String text) {
+    return Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey,
+        letterSpacing: 2,
+      ),
+    );
+  }
+
+  Widget _announcementCard(
+    BuildContext context,
+    WidgetRef ref, {
+    required Draft draft,
+    required bool isDark,
+  }) {
+    final status = draft.status;
+    final isFailed = status == 'failed';
+    final isDraft = status == 'draft';
+    final isScheduled = status == 'scheduled';
+    final isPosted = status == 'posted';
+    final title = _titleFromDraft(draft);
+    final subtitle = _subtitleFromDraft(draft);
+    final timeLabel = _formatDateLabel(draft.createdAt);
+
+    final borderColor = isFailed
+        ? Colors.red.withOpacity(0.3)
+        : (isDark ? Colors.white10 : Colors.grey.shade200);
+
     return InkWell(
-      onTap: onTap,
+      onTap: () => _openEditor(context, ref, initialRaw: draft.rawText),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF161B26) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: error ? Colors.red.withOpacity(0.3) : Colors.grey.shade200),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
-        ),
         padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(imageUrl, width: 88, height: 88, fit: BoxFit.cover),
-                ),
-                Positioned(
-                  bottom: -6,
-                  right: -6,
-                  child: Row(
-                    children: [
-                      _platformBadge('X'),
-                      const SizedBox(width: 4),
-                      _platformBadge('Ig'),
-                    ],
-                  ),
-                )
-              ],
+        decoration: BoxDecoration(
+          color: isDark ? surfaceDark : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildThumbnail(isFailed: isFailed),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -270,79 +253,299 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {})
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.more_horiz,
+                        color: isDark ? Colors.white54 : Colors.grey.shade500,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(subtitle, style: TextStyle(fontSize: 13, color: error ? Colors.red.shade300 : Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isFailed
+                          ? Colors.red.shade300
+                          : (isDark ? Colors.white54 : Colors.grey.shade600),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (dateLabel != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(color: primary.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                          child: Row(
+                  if (isFailed)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        onPressed: () => ref.read(draftListProvider.notifier).markScheduled(draft),
+                        child: const Text('再試行', style: TextStyle(color: Colors.white)),
+                      ),
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildStatusBadge(
+                          isDark: isDark,
+                          isScheduled: isScheduled,
+                          isDraft: isDraft,
+                          isPosted: isPosted,
+                          timeLabel: timeLabel,
+                        ),
+                        if (!isDraft)
+                          Row(
                             children: [
-                              Icon(error ? Icons.priority_high : Icons.calendar_today, size: 14, color: primary),
-                              const SizedBox(width: 6),
-                              Text(dateLabel, style: TextStyle(fontSize: 12, color: primary)),
+                              Icon(Icons.schedule, size: 14, color: Colors.grey.shade400),
+                              const SizedBox(width: 4),
+                              Text(
+                                timeLabel,
+                                style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                              ),
                             ],
                           ),
-                        ),
-                      if (error)
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-                          onPressed: () {},
-                          child: const Text('再試行'),
-                        ),
-                      if (!error) const SizedBox.shrink(),
-                    ],
-                  )
+                      ],
+                    ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _platformBadge(String text) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24)),
-      child: Center(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
-    );
-  }
+  Widget _buildStatusBadge({
+    required bool isDark,
+    required bool isScheduled,
+    required bool isDraft,
+    required bool isPosted,
+    required String timeLabel,
+  }) {
+    Color bg;
+    Color fg;
+    IconData icon;
+    String text;
 
-  Widget _buildBottomNav() {
+    if (isScheduled) {
+      bg = primary.withOpacity(0.12);
+      fg = primary;
+      icon = Icons.notifications_active;
+      text = 'リマインド設定中';
+    } else if (isDraft) {
+      bg = isDark ? Colors.white10 : Colors.grey.shade200;
+      fg = isDark ? Colors.white60 : Colors.grey.shade600;
+      icon = Icons.edit_note;
+      text = '下書き';
+    } else if (isPosted) {
+      bg = isDark ? Colors.white10 : Colors.grey.shade200;
+      fg = isDark ? Colors.white60 : Colors.grey.shade600;
+      icon = Icons.check_circle_outline;
+      text = '投稿済み';
+    } else {
+      bg = isDark ? Colors.white10 : Colors.grey.shade200;
+      fg = isDark ? Colors.white60 : Colors.grey.shade600;
+      icon = Icons.info_outline;
+      text = '未設定';
+    }
+
     return Container(
-      decoration: BoxDecoration(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF101217).withOpacity(0.6) : Colors.white.withOpacity(0.9), border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06)))),
-      padding: const EdgeInsets.only(bottom: 10, top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _navItem(Icons.home, 'ホーム', active: true),
-          _navItem(Icons.calendar_month, 'カレンダー'),
-          _navItem(Icons.bar_chart, '分析'),
-          _navItem(Icons.person, 'プロフィール'),
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg)),
+          if (isDraft) ...[
+            const SizedBox(width: 6),
+            Text('•', style: TextStyle(color: fg)),
+            const SizedBox(width: 6),
+            Text(timeLabel, style: TextStyle(fontSize: 11, color: fg)),
+          ],
         ],
       ),
     );
   }
 
-  Widget _navItem(IconData icon, String label, {bool active = false}) {
+  Widget _buildThumbnail({required bool isFailed}) {
+    return Container(
+      width: 88,
+      height: 88,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: isFailed
+              ? [Colors.grey.shade700, Colors.grey.shade500]
+              : [const Color(0xFF222937), const Color(0xFF3E4A63)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Icon(
+              Icons.image,
+              color: Colors.white.withOpacity(0.6),
+              size: 32,
+            ),
+          ),
+          Positioned(
+            bottom: -4,
+            right: -4,
+            child: Row(
+              children: [
+                _platformBadge('X', dark: true),
+                const SizedBox(width: 4),
+                _platformBadge('Ig', dark: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _platformBadge(String text, {required bool dark}) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: dark ? Colors.black : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Center(
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFab(BuildContext context, WidgetRef ref) {
+    return FloatingActionButton.extended(
+      backgroundColor: primary,
+      onPressed: () => _openEditor(context, ref),
+      label: Row(
+        children: const [
+          Text('新規作成', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          SizedBox(width: 8),
+          Icon(Icons.add, color: Colors.black),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 18, top: 8),
+      decoration: BoxDecoration(
+        color: (isDark ? surfaceDark : Colors.white).withOpacity(0.95),
+        border: Border(top: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _navItem(icon: Icons.home, label: 'ホーム', active: true),
+          _navItem(icon: Icons.calendar_month, label: 'カレンダー'),
+          _navItem(icon: Icons.settings, label: '設定'),
+        ],
+      ),
+    );
+  }
+
+  Widget _navItem({required IconData icon, required String label, bool active = false}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: active ? primary : Colors.grey.shade500),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 10, color: active ? primary : Colors.grey.shade500, fontWeight: active ? FontWeight.bold : FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: active ? primary : Colors.grey.shade500,
+            fontWeight: active ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
+
+  Future<void> _openEditor(BuildContext context, WidgetRef ref, {String? initialRaw}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => PostPrepScreen(initialRaw: initialRaw)),
+    );
+    await ref.read(draftListProvider.notifier).refresh();
+  }
+
+  String _titleFromDraft(Draft draft) {
+    final raw = draft.rawText.trim();
+    if (raw.isEmpty) return '無題の告知';
+    final firstLine = raw.split(RegExp(r'\r?\n')).first.trim();
+    return firstLine.isEmpty ? '無題の告知' : firstLine;
+  }
+
+  String _subtitleFromDraft(Draft draft) {
+    final base = draft.generated.trim().isNotEmpty ? draft.generated : draft.rawText;
+    final normalized = base.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return normalized.isEmpty ? '内容が未入力です。' : normalized;
+  }
+
+  String _formatDateLabel(int millis) {
+    final date = DateTime.fromMillisecondsSinceEpoch(millis);
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$month/$day $hour:$minute';
+  }
+
+  List<_Section> _buildSections(List<Draft> drafts) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final cutoff = today.add(const Duration(days: 7));
+    final week = <Draft>[];
+    final future = <Draft>[];
+
+    for (final draft in drafts) {
+      final date = DateTime.fromMillisecondsSinceEpoch(draft.createdAt);
+      if (date.isBefore(cutoff)) {
+        week.add(draft);
+      } else {
+        future.add(draft);
+      }
+    }
+
+    return [
+      if (week.isNotEmpty) _Section('今週の予定', week),
+      if (future.isNotEmpty) _Section('今後の予定', future),
+    ];
+  }
+}
+
+class _Section {
+  const _Section(this.title, this.items);
+
+  final String title;
+  final List<Draft> items;
 }
