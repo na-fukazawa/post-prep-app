@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html class="dark" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>投稿予定一覧 (ホーム)</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ffcc",
+                        "background-light": "#f0f2f4",
+                        "background-dark": "#0e121a",
+                        "surface-dark": "#161b26",
+                    },
+                    fontFamily: {
+                        "sans": ["Noto Sans JP", "sans-serif"],
+                        "display": ["Space Grotesk", "Noto Sans JP", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .glass {
+            background: rgba(22, 27, 38, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        body {
+            min-height: max(884px, 100dvh);
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark antialiased text-gray-900 dark:text-gray-100 min-h-screen flex flex-col overflow-hidden relative selection:bg-primary selection:text-black">
+<header class="flex items-center justify-between p-5 pt-14 z-20 sticky top-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm">
+<div class="flex flex-col">
+<h1 class="text-2xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white">投稿予定一覧</h1>
+<p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">ローカル保存のスケジュール</p>
+</div>
+</header>
+<div class="px-5 pb-2">
+<div class="flex gap-3 overflow-x-auto no-scrollbar py-2">
+<button class="flex h-9 shrink-0 items-center justify-center rounded-lg bg-primary px-5 shadow-[0_0_15px_rgba(0,255,204,0.15)] transition-transform active:scale-95">
+<span class="text-black text-sm font-bold">すべて</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-transparent px-5 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors active:scale-95">
+<span class="text-gray-600 dark:text-gray-300 text-sm font-medium">予約済み</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-transparent px-5 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors active:scale-95">
+<span class="text-gray-600 dark:text-gray-300 text-sm font-medium">下書き</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 dark:border-white/10 bg-transparent px-5 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors active:scale-95">
+<span class="text-gray-600 dark:text-gray-300 text-sm font-medium">投稿済み</span>
+</button>
+</div>
+</div>
+<main class="flex-1 overflow-y-auto px-5 pb-32 pt-2 no-scrollbar space-y-4">
+<div class="flex justify-between items-end mt-2 mb-1">
+<h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em]">今週の予定</h2>
+</div>
+<div class="group relative flex flex-col bg-white dark:bg-surface-dark rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden transition-all hover:border-primary/30">
+<div class="absolute -right-10 -top-10 h-32 w-32 bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-colors"></div>
+<div class="flex gap-4 items-start relative z-10">
+<div class="relative shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-xl w-[88px] h-[88px] shadow-inner" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA1-L2pzadFAl73MEesP1ktDxNsaeVSg79ZDB82JN8bKuxQsRPBH_pdpZrmblPii1CQcIUs131V4-qCVCVQOrYm1QKqGlKdfBdRjjMC1cfbeQp41--t0ygT2XzVTS8mMXb7iF721S1JVtD_nylEF1B6OZkfcXUdaCZ1lWhW5cOLBlcrtYe4b4aGXhjnXNLG6TRDYCajAnkts7zN05rGF55hEuISADKRZVHwckKF4H2Uldwl2TeCXz7dNL95heNoq0dmFYPFZwXSuFPc");'></div>
+<div class="absolute -bottom-2 -right-2 flex gap-1">
+<div class="flex items-center justify-center size-6 rounded-full bg-black border border-white/10 text-white">
+<span class="text-[10px] font-bold">X</span>
+</div>
+</div>
+</div>
+<div class="flex flex-1 flex-col h-full justify-between py-0.5">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight pr-4">ライブ出演告知：The Velvet Lounge</h3>
+<button class="text-gray-400 hover:text-white p-1 -mr-2 -mt-2">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">ジャズナイト特別出演のお知らせ</p>
+</div>
+<div class="flex items-center justify-between mt-3">
+<div class="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px]">notifications_active</span>
+<span>リマインド設定中</span>
+</div>
+<div class="flex items-center gap-1 text-[11px] text-gray-400">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>明日 20:00</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="group relative flex flex-col bg-white dark:bg-surface-dark rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden transition-all hover:border-gray-500">
+<div class="flex gap-4 items-start relative z-10">
+<div class="relative shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-xl w-[88px] h-[88px] opacity-80" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDzh9YKMlrsA0RKU6EFe4jj-sxLQCOvnV-vq5sjpbP5XK1NEzvb8gPYs1OsEvvmmFGQY68DWUPKDHXF8mPsatSiLkUrRy1jRmdMoN2gElPUg2dSNP4MMlemea4AjBSj9lHX1nCqsbTIPLBHqth7QUsTsxOOo2HOYJeEF1uiRfEApqh3_Nz8GShw1O75AiW6lniMJZQhz6nsfjYPmk78WdoCohFFYoHAufZIFepp71eSQsFEU-mwXmsYbqcnWa1nhc4PlVP_rgQ2cGCX");'></div>
+</div>
+<div class="flex flex-1 flex-col h-full justify-between py-0.5">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight pr-4">フェス出演情報解禁</h3>
+<button class="text-gray-400 hover:text-white p-1 -mr-2 -mt-2">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">早割チケット販売開始の案内</p>
+</div>
+<div class="flex items-center justify-between mt-3">
+<div class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/5 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px]">edit_note</span>
+<span>下書き • 11/02</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-end mt-6 mb-1">
+<h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em]">今後の予定</h2>
+</div>
+<div class="group relative flex flex-col bg-white dark:bg-surface-dark rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden transition-all hover:border-primary/30">
+<div class="flex gap-4 items-start relative z-10">
+<div class="relative shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-xl w-[88px] h-[88px]" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBxXiBK-BrGdvUoD_GZrj8MYhOyN0AtHW4UXWpbWvMLv0mowtXUN4iUCo9y8pQQC-zWPoHBPgTVt-gAUk2RdP8mkx423v9cSRvGrl8XR85OE8ofV5XBCcuSmxcjlFiyu4ewbMs-EZ11COSAGnNIq0QCB__t7nz__9l9kdnmmdrnfdUs-96s5S_3AHQ5XWV6YWZIEcWNgMKO2l36Dh5G-q8nEkQhhSrvxYxZWWQnbaVwyOdJ4LhkyljjoTENIczndPcnYiZ0TeOnVpn4");'></div>
+<div class="absolute -bottom-2 -right-2 flex gap-1">
+<div class="flex items-center justify-center size-6 rounded-full bg-black border border-white/10 text-white">
+<span class="text-[10px] font-bold">Ig</span>
+</div>
+</div>
+</div>
+<div class="flex flex-1 flex-col h-full justify-between py-0.5">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight pr-4">アコースティックセッション</h3>
+<button class="text-gray-400 hover:text-white p-1 -mr-2 -mt-2">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">ティーザー動画のアップロード</p>
+</div>
+<div class="flex items-center justify-between mt-3">
+<div class="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px]">notifications_active</span>
+<span>リマインド設定中</span>
+</div>
+<div class="flex items-center gap-1 text-[11px] text-gray-400">
+<span class="material-symbols-outlined text-[14px]">calendar_month</span>
+<span>11/15 17:00</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="group relative flex flex-col bg-white dark:bg-surface-dark rounded-2xl p-3 shadow-sm border border-red-500/20 overflow-hidden transition-all">
+<div class="flex gap-4 items-start relative z-10">
+<div class="relative shrink-0">
+<div class="bg-center bg-no-repeat bg-cover rounded-xl w-[88px] h-[88px] grayscale opacity-60" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5eIpaRB6EVvGKbIgEEYMseCzGHUYtQ6FHbyxwXag82A8wwj54JaeFYaM3xTrtliWkp2lpty6TFIvFzzeS-LI6vJYDUggJCQnyxqPEFdOb-KhuS751adRnkl9PRnJiMqaXMwDeYSU1t2W4ixUpMudDOQ8d82udY_SW7uEObRtpGQnnMINOb0b68p-Fzq1oBQ0Yufg8UzjZcm7vC9bwhy6fIMvD-fddWAwt0oRddq6H977OxubNZZ9KVYEeyNMm2xkaxRaSD60Uj_Q4");'></div>
+<div class="absolute -bottom-2 -right-2 flex gap-1">
+<div class="flex items-center justify-center size-6 rounded-full bg-red-900 border border-red-500 text-white">
+<span class="material-symbols-outlined text-[14px]">priority_high</span>
+</div>
+</div>
+</div>
+<div class="flex flex-1 flex-col h-full justify-between py-0.5">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight pr-4">新作グッズ販売告知</h3>
+<button class="text-gray-400 hover:text-white p-1 -mr-2 -mt-2">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<p class="text-sm text-red-400 mt-1 line-clamp-1">投稿に失敗しました。接続を確認してください。</p>
+</div>
+<div class="flex items-center justify-between mt-3">
+<button class="flex items-center gap-1.5 text-xs font-bold text-red-100 bg-red-600/80 hover:bg-red-600 px-4 py-1.5 rounded transition-colors">
+<span>再試行</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed bottom-24 right-5 z-40 flex flex-col items-end gap-3">
+<button class="group flex items-center gap-2 bg-primary px-4 h-14 rounded-2xl shadow-[0_4px_20px_rgba(0,255,204,0.4)] hover:shadow-[0_4px_30px_rgba(0,255,204,0.6)] hover:scale-105 active:scale-95 transition-all duration-300">
+<span class="text-black font-bold text-sm">新規作成</span>
+<span class="material-symbols-outlined text-black group-hover:rotate-90 transition-transform duration-300" style="font-size: 28px;">add</span>
+</button>
+</div>
+<nav class="fixed bottom-0 left-0 w-full glass border-t border-white/5 pb-8 pt-2 px-6 z-50">
+<div class="flex justify-between items-center max-w-md mx-auto">
+<button class="flex flex-col items-center gap-1 p-2 text-primary">
+<span class="material-symbols-outlined filled" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-[10px] font-bold">ホーム</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="text-[10px] font-medium">カレンダー</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-medium">設定</span>
+</button>
+</div>
+</nav>
+
+</body></html>

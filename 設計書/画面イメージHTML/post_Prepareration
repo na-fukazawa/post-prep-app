@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html class="dark" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>投稿準備 - ライブ出演情報</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Noto+Sans+JP:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ffcc",
+                        "primary-dark": "#00e6b8",
+                        "background-light": "#f0f2f4",
+                        "background-dark": "#0e121a",
+                        "surface-dark": "#1a1f2d",
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "body": ["Noto Sans JP", "sans-serif"],
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                    boxShadow: {
+                        'glow': '0 0 20px -5px rgba(0, 255, 204, 0.3)',
+                        'glow-lg': '0 0 30px -5px rgba(0, 255, 204, 0.4)',
+                    }
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .text-glow { text-shadow: 0 0 10px rgba(0, 255, 204, 0.2); }
+        body { min-height: max(884px, 100dvh); font-family: 'Noto Sans JP', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark transition-colors duration-200 antialiased overflow-hidden h-screen w-full flex flex-col">
+<header class="flex-none px-6 pt-12 pb-2 flex items-center justify-between z-20 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md sticky top-0 border-b border-gray-200 dark:border-white/5">
+<button class="group flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all text-slate-800 dark:text-gray-400 dark:group-hover:text-white">
+<span class="material-symbols-outlined text-[28px]">arrow_back_ios_new</span>
+</button>
+<h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">投稿準備</h1>
+<button class="group flex items-center justify-center p-2 -mr-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all text-slate-800 dark:text-gray-400 dark:group-hover:text-white">
+<span class="material-symbols-outlined text-[24px]">more_horiz</span>
+</button>
+</header>
+<main class="flex-1 overflow-y-auto relative pb-32">
+<div class="px-6 pt-6 pb-2 w-full flex flex-col items-center">
+<div class="relative w-full aspect-[4/5] max-w-[280px] rounded-2xl overflow-hidden shadow-2xl dark:shadow-glow ring-1 ring-black/5 dark:ring-white/10 group">
+<div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD_6JrWvnbdw_iEuyj7pAfEb2Gbs-6KJ-KvI86N9gw37v1BaGYtXnhVzO0ARgNTfl2gkw3jB7_oRz55_ln4oi75Ky8sad_7ApkOsr6pTYlyQNnpcYbloT7vrJQL6MIg1HWB-FobHxe-9LryPw-qgy8y6iAWbkyTAvMQ3aqzil3J0o4t5g7GFV5VhkgnRE6au8RJfWM3xaS99hbveOVpIHBd1ARnbUPDUTF7acrvM-Z4Axl_pp-luBcUIjbQqIFYFt1idNcaJwWWTnpf');"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-40"></div>
+<div class="absolute top-3 right-3 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-bold text-white border border-white/10 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">image</span> 画像プレビュー
+                </div>
+</div>
+<div class="mt-4 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
+<p class="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+<span class="font-bold">投稿手順:</span><br/>
+                    ① 本文をコピーする ② シェアボタンを押す ③ SNSが開いたら画像を貼り付けて投稿！
+                </p>
+</div>
+</div>
+<div class="px-4 space-y-6 mt-4 pb-8">
+<div class="bg-white dark:bg-surface-dark rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-white/5 relative overflow-hidden group">
+<div class="absolute top-0 left-0 right-0 h-1 bg-slate-900 dark:bg-slate-200"></div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-black">
+<span class="font-display text-xl font-bold">𝕏</span>
+</div>
+<div>
+<h3 class="font-bold text-lg text-slate-900 dark:text-white leading-tight">X (Twitter)</h3>
+<p class="text-xs text-slate-500 dark:text-gray-400">告知ポストを作成</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="bg-gray-50 dark:bg-black/20 rounded-xl p-3 border border-gray-100 dark:border-white/5">
+<div class="flex justify-between items-center mb-2">
+<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ステップ 1: 本文</span>
+<span class="text-[10px] bg-slate-200 dark:bg-white/10 px-1.5 rounded text-slate-600 dark:text-slate-300">128文字</span>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 font-body mb-3">
+                            今週金曜日はThe Venueでライブです！出番は20時から。チケット予約はDMまたはプロフィールのリンクから...
+                        </p>
+<button class="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 active:scale-[0.98]">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+                            本文をコピー
+                        </button>
+</div>
+<div>
+<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">ステップ 2: アプリを開く</div>
+<button class="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold text-base transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">ios_share</span>
+                            Xでシェア
+                        </button>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-white/5 relative overflow-hidden">
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400"></div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[2px]">
+<div class="w-full h-full rounded-full bg-white dark:bg-surface-dark flex items-center justify-center">
+<span class="material-symbols-outlined text-transparent bg-clip-text bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-[20px]">photo_camera</span>
+</div>
+</div>
+<div>
+<h3 class="font-bold text-lg text-slate-900 dark:text-white leading-tight">Instagram</h3>
+<p class="text-xs text-slate-500 dark:text-gray-400">フィード・ストーリーに投稿</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="bg-gray-50 dark:bg-black/20 rounded-xl p-3 border border-gray-100 dark:border-white/5">
+<div class="flex justify-between items-center mb-2">
+<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ステップ 1: キャプション</span>
+<span class="text-[10px] bg-slate-200 dark:bg-white/10 px-1.5 rounded text-slate-600 dark:text-slate-300">ハッシュタグ付き</span>
+</div>
+<p class="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 font-body mb-3">
+                            【ライブ告知】今週金曜日はThe Venueにて演奏します！皆様にお会いできるのを楽しみにしています... #live #music
+                        </p>
+<button class="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 active:scale-[0.98]">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+                            本文をコピー
+                        </button>
+</div>
+<div>
+<div class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">ステップ 2: アプリを開く</div>
+<button class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-bold text-base transition-all shadow-lg shadow-purple-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">ios_share</span>
+                            Instagramでシェア
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed bottom-0 left-0 right-0 p-6 pb-10 bg-gradient-to-t from-background-light via-background-light/95 to-transparent dark:from-background-dark dark:via-background-dark/95 dark:to-transparent pointer-events-none flex justify-center z-30">
+<button class="pointer-events-auto w-full max-w-sm h-14 bg-primary hover:bg-primary-dark text-background-dark text-lg font-bold rounded-2xl shadow-lg dark:shadow-glow hover:shadow-xl dark:hover:shadow-glow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3">
+<span class="material-symbols-outlined font-bold">check_circle</span>
+            投稿完了としてマーク
+        </button>
+</div>
+
+</body></html>

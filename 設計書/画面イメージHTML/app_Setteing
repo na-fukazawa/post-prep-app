@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html class="dark" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>設定 (テンプレート管理)</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Noto+Sans+JP:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00ffcc",
+                        "background-light": "#f0f2f4",
+                        "background-dark": "#0e121a",
+                        "surface-dark": "#1A1F2D",
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "Noto Sans JP", "sans-serif"],
+                        "sans": ["Noto Sans JP", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                    boxShadow: {
+                        "glow": "0 0 15px rgba(0, 255, 204, 0.3)",
+                        "glow-sm": "0 0 8px rgba(0, 255, 204, 0.2)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #00ffcc;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #00ffcc;
+        }
+        .toggle-checkbox:checked + .toggle-label:before {
+            transform: translateX(100%);
+            background-color: #0e121a;
+        }
+        .toggle-label:before {
+            background-color: #ffffff;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-sans text-slate-800 dark:text-slate-200 antialiased min-h-screen selection:bg-primary selection:text-black">
+<div class="relative flex flex-col h-full max-w-md mx-auto min-h-screen overflow-hidden bg-background-light dark:bg-background-dark pb-10">
+<header class="flex items-center justify-between p-6 pt-8 pb-4 sticky top-0 z-20 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md transition-all duration-300">
+<button class="group flex items-center justify-center size-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-white group-hover:-translate-x-0.5 transition-transform" style="font-size: 24px;">arrow_back</span>
+</button>
+<h1 class="text-xl font-bold tracking-tight flex-1 text-center pr-10 text-slate-900 dark:text-white truncate">アプリ設定</h1>
+</header>
+<main class="flex-1 flex flex-col px-4 gap-6">
+<section>
+<div class="flex justify-between items-end mb-3 ml-2">
+<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">投稿デフォルト設定</h3>
+<span class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20">自動入力有効</span>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-800/50 p-4">
+<label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">デフォルトのハッシュタグ</label>
+<div class="flex flex-wrap gap-2 mb-3">
+<div class="flex items-center gap-1 pl-3 pr-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300">
+<span>#techno</span>
+<button class="hover:text-red-400"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+<div class="flex items-center gap-1 pl-3 pr-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300">
+<span>#live</span>
+<button class="hover:text-red-400"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+<div class="flex items-center gap-1 pl-3 pr-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300">
+<span>#gig</span>
+<button class="hover:text-red-400"><span class="material-symbols-outlined text-[16px]">close</span></button>
+</div>
+</div>
+<div class="relative group">
+<input class="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 py-2 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-primary transition-colors peer caret-primary" placeholder="タグを追加..." type="text"/>
+<div class="absolute right-0 bottom-2 text-primary opacity-0 peer-focus:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[20px]">subdirectory_arrow_left</span>
+</div>
+</div>
+</div>
+</section>
+<section>
+<div class="flex justify-between items-end mb-3 ml-2">
+<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">定型文テンプレート</h3>
+<button class="text-[10px] text-primary hover:text-primary/80 transition-colors font-medium">デフォルトに戻す</button>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-800/50 p-4 space-y-5">
+<div>
+<label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">AIトーン設定</label>
+<div class="grid grid-cols-3 gap-2">
+<button class="relative flex items-center justify-center py-2 px-3 text-xs font-bold rounded-lg bg-primary text-black shadow-glow-sm transition-transform active:scale-95">
+                                盛り上げ
+                                <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-black/20 rounded-full"></span>
+</button>
+<button class="flex items-center justify-center py-2 px-3 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 hover:bg-slate-200 dark:hover:bg-slate-700">
+                                カジュアル
+                            </button>
+<button class="flex items-center justify-center py-2 px-3 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 hover:bg-slate-200 dark:hover:bg-slate-700">
+                                最小限
+                            </button>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center mb-2">
+<label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">スマートペースト構成</label>
+<span class="text-[10px] text-slate-400 italic">プレビュー表示中</span>
+</div>
+<div class="relative group">
+<textarea class="w-full h-32 bg-slate-50 dark:bg-[#0e121a] border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder-slate-400 resize-none leading-relaxed font-mono" placeholder="テンプレートを入力してください...">{venue} でのライブ、今夜は最高になりそう！🔥 
+{date} の {time} スタート。チケットは {price} です。遊びに来てね！</textarea>
+</div>
+</div>
+<div class="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-3 border border-slate-100 dark:border-slate-800">
+<span class="text-[10px] text-slate-500 dark:text-slate-400 mb-2 block font-medium">タップしてプレースホルダーを挿入:</span>
+<div class="flex flex-wrap gap-2">
+<button class="text-xs font-mono bg-white dark:bg-slate-800 text-primary hover:text-white border border-primary/20 px-2.5 py-1.5 rounded-md hover:bg-primary transition-colors duration-200 shadow-sm">+ {会場}</button>
+<button class="text-xs font-mono bg-white dark:bg-slate-800 text-primary hover:text-white border border-primary/20 px-2.5 py-1.5 rounded-md hover:bg-primary transition-colors duration-200 shadow-sm">+ {日付}</button>
+<button class="text-xs font-mono bg-white dark:bg-slate-800 text-primary hover:text-white border border-primary/20 px-2.5 py-1.5 rounded-md hover:bg-primary transition-colors duration-200 shadow-sm">+ {価格}</button>
+<button class="text-xs font-mono bg-white dark:bg-slate-800 text-primary hover:text-white border border-primary/20 px-2.5 py-1.5 rounded-md hover:bg-primary transition-colors duration-200 shadow-sm">+ {時間}</button>
+</div>
+</div>
+</div>
+</section>
+<section>
+<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 ml-2">一般設定</h3>
+<div class="flex flex-col bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-800/50 divide-y divide-slate-100 dark:divide-slate-800/50">
+<div class="flex items-center justify-between p-4">
+<div class="flex flex-col gap-0.5">
+<span class="text-base font-medium text-slate-900 dark:text-white">通知音</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">開演前アラートの通知音を鳴らす</span>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-md bg-white dark:bg-background-dark border-4 appearance-none cursor-pointer border-slate-300 dark:border-slate-600 checked:border-primary transition-all duration-300 z-10" id="toggle1" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-md bg-slate-300 dark:bg-slate-700 cursor-pointer transition-colors duration-300" for="toggle1"></label>
+</div>
+</div>
+</div>
+</section>
+<section>
+<h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 ml-2">データ管理</h3>
+<div class="flex flex-col bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200 dark:border-slate-800/50 overflow-hidden">
+<button class="flex items-center justify-between p-4 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group w-full text-left">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center size-10 rounded-lg bg-red-100 dark:bg-red-500/10 text-red-500 shrink-0 border border-red-200 dark:border-red-500/20">
+<span class="material-symbols-outlined">delete_forever</span>
+</div>
+<div class="flex flex-col">
+<span class="text-base font-medium text-red-600 dark:text-red-400">すべてのデータを削除</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">端末のローカル保存データを完全に消去します</span>
+</div>
+</div>
+</button>
+</div>
+</section>
+<div class="mt-8 flex flex-col items-center gap-4">
+<p class="text-[10px] text-slate-400 dark:text-slate-600 font-mono">バージョン 1.0.2 (Local)</p>
+</div>
+<div class="h-20"></div>
+</main>
+<nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface-light/80 dark:bg-[#0e121a]/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 flex justify-around items-center p-4 z-50">
+<button class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-[10px] font-medium">カレンダー</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+<span class="material-symbols-outlined">mic_external_on</span>
+<span class="text-[10px] font-medium">出演情報</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary relative">
+<span class="material-symbols-outlined fill-current">settings</span>
+<span class="text-[10px] font-medium">設定</span>
+<span class="absolute -bottom-1 w-1 h-1 rounded-full bg-primary shadow-glow"></span>
+</button>
+</nav>
+</div>
+
+</body></html>
