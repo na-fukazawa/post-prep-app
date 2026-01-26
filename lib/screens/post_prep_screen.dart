@@ -75,7 +75,7 @@ class _PostPrepScreenState extends State<PostPrepScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Post Prep')),
+      appBar: AppBar(title: const Text('投稿準備')),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(

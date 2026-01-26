@@ -3,14 +3,14 @@ description: A small Flutter app to prepare social post captions from pasted eve
 publish_to: 'none'
 version: 0.0.1
 environment:
-  sdk: ">=2.18.0 <3.0.0"
-  flutter: ">=3.0.0"
+  sdk: ">=3.10.3 <4.0.0"
+  flutter: ">=3.38.4"
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  share_plus: ^6.3.0
+  share_plus: ^12.0.1
   shared_preferences: ^2.1.0
 
 dev_dependencies:

@@ -23,7 +23,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Draft> _drafts = [];
   bool _loading = true;
-  String _activeFilter = 'All';
+  String _activeFilter = 'すべて';
 
   static const Color primary = Color(0xFF00FFCC);
 
@@ -114,9 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Text('Hello, Sarah', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('こんにちは、サラ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   SizedBox(height: 2),
-                  Text('Ready to announce?', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text('告知の準備はできましたか？', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               )
             ],
@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFilterChips() {
-    final chips = ['All', 'Scheduled', 'Drafts', 'Posted'];
+    final chips = ['すべて', '予約', '下書き', '投稿済み'];
     return SizedBox(
       height: 56,
       child: ListView.separated(
@@ -173,40 +173,40 @@ class _HomeScreenState extends State<HomeScreen> {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate(
                     [
-                      _sectionHeader('This Week'),
+                      _sectionHeader('今週'),
                       const SizedBox(height: 8),
                       _postCard(
-                        title: 'Live at The Velvet Lounge',
-                        subtitle: 'Jazz night special appearance.',
-                        dateLabel: 'Tomorrow, 8:00 PM',
+                        title: 'The Velvet Loungeでライブ',
+                        subtitle: 'ジャズナイト特別出演。',
+                        dateLabel: '明日 20:00',
                         imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA1-L2pzadFAl73MEesP1ktDxNsaeVSg79ZDB82JN8bKuxQsRPBH_pdpZrmblPii1CQcIUs131V4-qCVCVQOrYm1QKqGlKdfBdRjjMC1cfbeQp41--t0ygT2XzVTS8mMXb7iF721S1JVtD_nylEF1B6OZkfcXUdaCZ1lWhW5cOLBlcrtYe4b4aGXhjnXNLG6TRDYCajAnkts7zN05rGF55hEuISADKRZVHwckKF4H2Uldwl2TeCXz7dNL95heNoq0dmFYPFZwXSuFPc',
                         primary: primary,
                         onTap: () {},
                       ),
                       const SizedBox(height: 12),
                       _postCard(
-                        title: 'Neon Nights Festival',
-                        subtitle: 'Early bird ticket announcement.',
-                        dateLabel: 'Draft • Nov 02',
+                        title: 'ネオン・ナイツ・フェス',
+                        subtitle: '早割チケットの告知。',
+                        dateLabel: '下書き • 11月2日',
                         imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzh9YKMlrsA0RKU6EFe4jj-sxLQCOvnV-vq5sjpbP5XK1NEzvb8gPYs1OsEvvmmFGQY68DWUPKDHXF8mPsatSiLkUrRy1jRmdMoN2gElPUg2dSNP4MMlemea4AjBSj9lHX1nCqsbTIPLBHqth7QUsTsxOOo2HOYJeEF1uiRfEApqh3_Nz8GShw1O75AiW6lniMJZQhz6nsfjYPmk78WdoCohFFYoHAufZIFepp71eSQsFEU-mwXmsYbqcnWa1nhc4PlVP_rgQ2cGCX',
                         primary: Colors.grey,
                         onTap: () {},
                       ),
                       const SizedBox(height: 20),
-                      _sectionHeader('Upcoming'),
+                      _sectionHeader('今後の予定'),
                       const SizedBox(height: 8),
                       _postCard(
-                        title: 'Acoustic Session Promo',
-                        subtitle: 'Teaser video upload.',
-                        dateLabel: 'Nov 15, 5:00 PM',
+                        title: 'アコースティック・セッション告知',
+                        subtitle: 'ティーザー動画を投稿。',
+                        dateLabel: '11月15日 17:00',
                         imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBxXiBK-BrGdvUoD_GZrj8MYhOyN0AtHW4UXWpbWvMLv0mowtXUN4iUCo9y8pQQC-zWPoHBPgTVt-gAUk2RdP8mkx423v9cSRvGrl8XR85OE8ofV5XBCcuSmxcjlFiyu4ewbMs-EZ11COSAGnNIq0QCB__t7nz__9l9kdnmmdrnfdUs-96s5S_3AHQ5XWV6YWZIEcWNgMKO2l36Dh5G-q8nEkQhhSrvxYxZWWQnbaVwyOdJ4LhkyljjoTENIczndPcnYiZ0TeOnVpn4',
                         primary: primary,
                         onTap: () {},
                       ),
                       const SizedBox(height: 12),
                       _postCard(
-                        title: 'Merch Drop V2',
-                        subtitle: 'Failed to post. Check connection.',
+                        title: 'グッズ第2弾',
+                        subtitle: '投稿に失敗しました。接続を確認してください。',
                         dateLabel: null,
                         imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5eIpaRB6EVvGKbIgEEYMseCzGHUYtQ6FHbyxwXag82A8wwj54JaeFYaM3xTrtliWkp2lpty6TFIvFzzeS-LI6vJYDUggJCQnyxqPEFdOb-KhuS751adRnkl9PRnJiMqaXMwDeYSU1t2W4ixUpMudDOQ8d82udY_SW7uEObRtpGQnnMINOb0b68p-Fzq1oBQ0Yufg8UzjZcm7vC9bwhy6fIMvD-fddWAwt0oRddq6H977OxubNZZ9KVYEeyNMm2xkaxRaSD60Uj_Q4',
                         primary: Colors.red,
@@ -296,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
                           onPressed: () {},
-                          child: const Text('Retry'),
+                          child: const Text('再試行'),
                         ),
                       if (!error) const SizedBox.shrink(),
                     ],
@@ -326,10 +326,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _navItem(Icons.home, 'Home', active: true),
-          _navItem(Icons.calendar_month, 'Calendar'),
-          _navItem(Icons.bar_chart, 'Insights'),
-          _navItem(Icons.person, 'Profile'),
+          _navItem(Icons.home, 'ホーム', active: true),
+          _navItem(Icons.calendar_month, 'カレンダー'),
+          _navItem(Icons.bar_chart, '分析'),
+          _navItem(Icons.person, 'プロフィール'),
         ],
       ),
     );
