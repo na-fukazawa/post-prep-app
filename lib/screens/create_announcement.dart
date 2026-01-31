@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/draft_providers.dart';
 import '../providers/settings_providers.dart';
@@ -19,8 +22,10 @@ class CreateAnnouncementScreen extends ConsumerStatefulWidget {
 class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScreen> {
   static const Color primary = Color(0xFF00FFCC);
   static const Color backgroundDark = Color(0xFF0E121A);
-  static const Color surfaceDark = Color(0xFF161B26);
-  static const Color inputDark = Color(0xFF1F2735);
+  static const Color surfaceDark = Color(0xFF1A1F2D);
+  static const Color surfaceDarkAlt = Color(0xFF151925);
+  static const Color inputDark = Color(0xFF252B3B);
+  static const Color borderDark = Color(0xFF2A3240);
   static const Color mutedText = Color(0xFF9AA3B2);
   static const int xCharacterLimit = 280;
   static const int xUrlLength = 23;
@@ -279,46 +284,30 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       appBar: AppBar(
         backgroundColor: backgroundDark,
         elevation: 0,
-        title: Text(isEditing ? '告知編集' : '新規作成'),
+        centerTitle: true,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        title: Text(
+          isEditing ? '告知編集' : '新規作成 (スマート抽出)',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFF1F2735)),
+        ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
-            _sectionTitle('スマート入力'),
-            _card(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '主催者から届いた情報を貼り付けると本文案を生成します。',
-                    style: TextStyle(fontSize: 12, color: mutedText, height: 1.4),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _rawController,
-                    maxLines: 4,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('主催者からの詳細をペースト'),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isGenerating ? null : _generateFromRaw,
-                      icon: const Icon(Icons.auto_awesome),
-                      label: Text(_isGenerating ? '生成中...' : '情報を抽出して下書き作成'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primary,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildSmartInputCard(),
+            const SizedBox(height: 18),
+            _buildImageUploadCard(),
             const SizedBox(height: 18),
             _sectionTitle('告知タイトル'),
             TextFormField(
@@ -326,31 +315,6 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('ライブ名やイベント名'),
               validator: (value) => (value ?? '').trim().isEmpty ? 'タイトルは必須です。' : null,
-            ),
-            const SizedBox(height: 18),
-            _sectionTitle('画像'),
-            _card(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '画像URL（改行区切りで複数入力可）',
-                    style: TextStyle(fontSize: 12, color: mutedText),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _imageUrlsController,
-                    maxLines: 3,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('https://example.com/image.jpg'),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  if (_parseImageUrls(_imageUrlsController.text).isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    _buildImagePreview(_parseImageUrls(_imageUrlsController.text)),
-                  ],
-                ],
-              ),
             ),
             const SizedBox(height: 18),
             _sectionTitle('イベント詳細'),
@@ -588,6 +552,246 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     });
   }
 
+  void _openImageUrlSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: surfaceDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final urls = _parseImageUrls(_imageUrlsController.text);
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                24 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: borderDark,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    '画像URL（改行区切りで複数入力可）',
+                    style: TextStyle(fontSize: 12, color: mutedText),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _imageUrlsController,
+                    maxLines: 4,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _inputDecoration('https://example.com/image.jpg'),
+                    onChanged: (_) {
+                      setSheetState(() {});
+                      setState(() {});
+                    },
+                  ),
+                  if (urls.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildImagePreview(urls),
+                  ],
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('完了'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSmartInputCard() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [surfaceDark, surfaceDarkAlt],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primary.withOpacity(0.3)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: Container(
+              height: 4,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    primary.withOpacity(0.7),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: primary.withOpacity(0.2)),
+                      ),
+                      child: const Icon(Icons.auto_awesome, color: primary, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'スマート入力',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Auto-Fill Powered by AI',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: mutedText,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  '主催者から届いたメールや告知文をそのまま貼り付けるだけで、ライブ名や会場などの情報を自動で抽出します。',
+                  style: TextStyle(fontSize: 11, color: mutedText, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _rawController,
+                  maxLines: 4,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: _inputDecoration('主催者からの詳細をペースト'),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isGenerating ? null : _generateFromRaw,
+                    icon: const Icon(Icons.auto_awesome),
+                    label: Text(_isGenerating ? '生成中...' : '情報を抽出して下書き作成'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageUploadCard() {
+    final urls = _parseImageUrls(_imageUrlsController.text);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _openImageUrlSheet,
+          child: _DashedBorder(
+            color: borderDark,
+            radius: 16,
+            strokeWidth: 1.5,
+            dashWidth: 6,
+            gap: 4,
+            child: Container(
+              decoration: BoxDecoration(
+                color: surfaceDark,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: AspectRatio(
+                aspectRatio: 4 / 5,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _UploadIcon(
+                        backgroundColor: inputDark,
+                        iconColor: primary,
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'フライヤー画像をアップロード',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '推奨サイズ 4:5',
+                        style: TextStyle(fontSize: 11, color: mutedText),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (urls.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _buildImagePreview(urls),
+        ],
+      ],
+    );
+  }
+
   Widget _buildXCount() {
     final count = _countXCharacters(_composeWithHashtags(_captionXController.text));
     final over = count > xCharacterLimit;
@@ -694,7 +898,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       decoration: BoxDecoration(
         color: surfaceDark,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1F2735)),
+        border: Border.all(color: borderDark),
       ),
       child: child,
     );
@@ -703,10 +907,115 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: mutedText),
+      hintStyle: const TextStyle(color: mutedText, fontSize: 12),
       filled: true,
       fillColor: inputDark,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
     );
+  }
+}
+
+class _UploadIcon extends StatelessWidget {
+  const _UploadIcon({
+    required this.backgroundColor,
+    required this.iconColor,
+  });
+
+  final Color backgroundColor;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(Icons.add_photo_alternate, color: iconColor),
+    );
+  }
+}
+
+class _DashedBorder extends StatelessWidget {
+  const _DashedBorder({
+    required this.child,
+    required this.color,
+    required this.radius,
+    required this.strokeWidth,
+    required this.dashWidth,
+    required this.gap,
+  });
+
+  final Widget child;
+  final Color color;
+  final double radius;
+  final double strokeWidth;
+  final double dashWidth;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashedBorderPainter(
+        color: color,
+        radius: radius,
+        strokeWidth: strokeWidth,
+        dashWidth: dashWidth,
+        gap: gap,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter({
+    required this.color,
+    required this.radius,
+    required this.strokeWidth,
+    required this.dashWidth,
+    required this.gap,
+  });
+
+  final Color color;
+  final double radius;
+  final double strokeWidth;
+  final double dashWidth;
+  final double gap;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(radius),
+    );
+    final path = Path()..addRRect(rrect);
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final next = math.min(distance + dashWidth, metric.length);
+        canvas.drawPath(metric.extractPath(distance, next), paint);
+        distance += dashWidth + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.radius != radius ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.dashWidth != dashWidth ||
+        oldDelegate.gap != gap;
   }
 }
