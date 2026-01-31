@@ -6,17 +6,25 @@ import '../providers/draft_providers.dart';
 import '../services/draft_store.dart';
 import 'create_announcement.dart';
 
-class PostPreparerationScreen extends ConsumerWidget {
+class PostPreparerationScreen extends ConsumerStatefulWidget {
   const PostPreparerationScreen({Key? key, required this.draftId}) : super(key: key);
 
   final String draftId;
 
+  @override
+  ConsumerState<PostPreparerationScreen> createState() => _PostPreparerationScreenState();
+}
+
+class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScreen> {
   static const Color primary = Color(0xFF00FFCC);
   static const Color backgroundDark = Color(0xFF0E121A);
   static const Color surfaceDark = Color(0xFF161B26);
   static const Color surfaceDarkElevated = Color(0xFF1B2230);
   static const Color mutedText = Color(0xFF9AA3B2);
   static const Color subduedText = Color(0xFF7C8595);
+
+  late final PageController _pageController;
+  int _currentImageIndex = 0;
 
   static const List<String> previewImages = [
     'https://lh3.googleusercontent.com/aida-public/AB6AXuA1-L2pzadFAl73MEesP1ktDxNsaeVSg79ZDB82JN8bKuxQsRPBH_pdpZrmblPii1CQcIUs131V4-qCVCVQOrYm1QKqGlKdfBdRjjMC1cfbeQp41--t0ygT2XzVTS8mMXb7iF721S1JVtD_nylEF1B6OZkfcXUdaCZ1lWhW5cOLBlcrtYe4b4aGXhjnXNLG6TRDYCajAnkts7zN05rGF55hEuISADKRZVHwckKF4H2Uldwl2TeCXz7dNL95heNoq0dmFYPFZwXSuFPc',
@@ -26,7 +34,19 @@ class PostPreparerationScreen extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final draftsAsync = ref.watch(draftListProvider);
 
     return Scaffold(
@@ -34,18 +54,24 @@ class PostPreparerationScreen extends ConsumerWidget {
       body: SafeArea(
         child: draftsAsync.when(
           data: (drafts) {
-            final match = drafts.where((draft) => draft.id == draftId).toList();
+            final match = drafts.where((draft) => draft.id == widget.draftId).toList();
             if (match.isEmpty) {
               return _buildMissingState(context);
             }
             final draft = match.first;
-            final bodyText = draft.generated.trim().isNotEmpty ? draft.generated : draft.rawText;
+            final bodyText = _baseCaption(draft);
+            final captionX = _composeCaption(draft, base: draft.captionX.isNotEmpty ? draft.captionX : bodyText);
+            final captionInstagram = _composeCaption(
+              draft,
+              base: draft.captionInstagram.isNotEmpty ? draft.captionInstagram : bodyText,
+            );
             final timeLabel = _formatDateLabel(draft.publishAt);
             final targets = _normalizedTargets(draft);
             final showX = targets.isEmpty || targets.contains('x');
             final showIg = targets.isEmpty || targets.contains('instagram');
             final isFailed = draft.status == 'failed';
             final isPosted = draft.status == 'posted';
+            final heroImages = _heroImagesForDraft(draft);
 
             return Stack(
               children: [
@@ -56,11 +82,15 @@ class PostPreparerationScreen extends ConsumerWidget {
                     children: [
                       _buildHeader(context, ref, draft),
                       const SizedBox(height: 16),
-                      _buildHeroImage(draft),
+                      _buildHeroImage(heroImages),
                       const SizedBox(height: 16),
                       _buildGuideCard(),
                       const SizedBox(height: 18),
                       _buildMetaRow(draft, timeLabel),
+                      if (_hasEventDetails(draft)) ...[
+                        const SizedBox(height: 16),
+                        _buildEventCard(draft),
+                      ],
                       if (isFailed) ...[
                         const SizedBox(height: 12),
                         _buildFailedCard(context, ref, draft),
@@ -74,8 +104,8 @@ class PostPreparerationScreen extends ConsumerWidget {
                           title: 'X (Twitter)',
                           subtitle: '告知ポストを作成',
                           stepLabel: 'ステップ 1: 本文',
-                          badgeText: '${bodyText.length}文字',
-                          bodyText: bodyText,
+                          badgeText: '${captionX.length}文字',
+                          bodyText: captionX,
                           actionLabel: 'Xでシェア',
                         ),
                       ],
@@ -89,7 +119,7 @@ class PostPreparerationScreen extends ConsumerWidget {
                           subtitle: 'フィード・ストーリーに投稿',
                           stepLabel: 'ステップ 1: キャプション',
                           badgeText: 'ハッシュタグ付き',
-                          bodyText: bodyText,
+                          bodyText: captionInstagram,
                           actionLabel: 'Instagramでシェア',
                         ),
                       ],
@@ -142,36 +172,66 @@ class PostPreparerationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeroImage(Draft draft) {
-    final imageUrl = _imageUrlForDraft(draft);
-    return Center(
-      child: Container(
-        width: 280,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 30,
-              offset: const Offset(0, 16),
+  Widget _buildHeroImage(List<String> imageUrls) {
+    final showDots = imageUrls.length > 1;
+    return Column(
+      children: [
+        Center(
+          child: Container(
+            width: 280,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 30,
+                  offset: const Offset(0, 16),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: AspectRatio(
-            aspectRatio: 4 / 5,
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: surfaceDarkElevated,
-                child: const Icon(Icons.image, color: mutedText, size: 40),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: AspectRatio(
+                aspectRatio: 4 / 5,
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: imageUrls.length,
+                  onPageChanged: (index) => setState(() => _currentImageIndex = index),
+                  itemBuilder: (context, index) {
+                    final imageUrl = imageUrls[index];
+                    return Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: surfaceDarkElevated,
+                        child: const Icon(Icons.image, color: mutedText, size: 40),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ),
         ),
-      ),
+        if (showDots) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < imageUrls.length; i++)
+                Container(
+                  width: 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i == _currentImageIndex ? primary : Colors.white24,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 
@@ -327,9 +387,16 @@ class PostPreparerationScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   bodyText.isEmpty ? '本文が未入力です。' : bodyText,
-                  maxLines: 3,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.4),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => _showFullText(context, title, bodyText),
+                    child: const Text('全文を見る', style: TextStyle(color: mutedText)),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
@@ -403,6 +470,62 @@ class PostPreparerationScreen extends ConsumerWidget {
     );
   }
 
+  bool _hasEventDetails(Draft draft) {
+    return draft.eventDate.trim().isNotEmpty ||
+        draft.venue.trim().isNotEmpty ||
+        draft.performers.trim().isNotEmpty ||
+        draft.ticketPrice.trim().isNotEmpty ||
+        draft.ticketUrl.trim().isNotEmpty;
+  }
+
+  Widget _buildEventCard(Draft draft) {
+    final rows = <Widget>[
+      if (draft.eventDate.trim().isNotEmpty) _infoRow('日時', draft.eventDate),
+      if (draft.venue.trim().isNotEmpty) _infoRow('会場', draft.venue),
+      if (draft.performers.trim().isNotEmpty) _infoRow('出演者', draft.performers),
+      if (draft.ticketPrice.trim().isNotEmpty) _infoRow('料金', draft.ticketPrice),
+      if (draft.ticketUrl.trim().isNotEmpty) _infoRow('URL', draft.ticketUrl),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surfaceDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF1F2735)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('イベント詳細', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          for (var i = 0; i < rows.length; i++) ...[
+            rows[i],
+            if (i != rows.length - 1) const SizedBox(height: 6),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 42,
+          child: Text(label, style: const TextStyle(fontSize: 11, color: mutedText)),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 12, color: Colors.white70),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMissingState(BuildContext context) {
     return Center(
       child: Column(
@@ -417,6 +540,45 @@ class PostPreparerationScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFullText(BuildContext context, String title, String text) {
+    if (text.trim().isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: backgroundDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final height = MediaQuery.of(context).size.height * 0.6;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+          child: SizedBox(
+            height: height,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Text(
+                      text,
+                      style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -447,6 +609,13 @@ class PostPreparerationScreen extends ConsumerWidget {
     return '$month/$day $hour:$minute';
   }
 
+  List<String> _heroImagesForDraft(Draft draft) {
+    if (draft.imageUrls.isNotEmpty) {
+      return draft.imageUrls;
+    }
+    return [_imageUrlForDraft(draft)];
+  }
+
   String _imageUrlForDraft(Draft draft) {
     final index = draft.id.hashCode.abs() % previewImages.length;
     return previewImages[index];
@@ -458,6 +627,20 @@ class PostPreparerationScreen extends ConsumerWidget {
     if (raw.isEmpty) return '無題の告知';
     final firstLine = raw.split(RegExp(r'\r?\n')).first.trim();
     return firstLine.isEmpty ? '無題の告知' : firstLine;
+  }
+
+  String _baseCaption(Draft draft) {
+    final generated = draft.generated.trim();
+    if (generated.isNotEmpty) return generated;
+    return draft.rawText.trim();
+  }
+
+  String _composeCaption(Draft draft, {required String base}) {
+    final tags = draft.hashtags.trim();
+    if (tags.isEmpty) return base.trim();
+    final normalized = base.trim();
+    if (normalized.isEmpty) return tags;
+    return '$normalized\n$tags';
   }
 
   Set<String> _normalizedTargets(Draft draft) {

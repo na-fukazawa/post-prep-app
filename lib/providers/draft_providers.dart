@@ -57,6 +57,12 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
     await refresh();
   }
 
+  Future<void> clearAll() async {
+    final store = ref.read(draftStoreProvider);
+    await store.clearAllDrafts();
+    await refresh();
+  }
+
   Future<void> updateStatus(Draft draft, String status) async {
     final store = ref.read(draftStoreProvider);
     final updated = Draft(
@@ -68,6 +74,15 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
       title: draft.title,
       publishAt: draft.publishAt,
       targets: draft.targets,
+      captionX: draft.captionX,
+      captionInstagram: draft.captionInstagram,
+      hashtags: draft.hashtags,
+      eventDate: draft.eventDate,
+      venue: draft.venue,
+      performers: draft.performers,
+      ticketPrice: draft.ticketPrice,
+      ticketUrl: draft.ticketUrl,
+      imageUrls: draft.imageUrls,
     );
     await store.saveDraft(updated);
     await refresh();

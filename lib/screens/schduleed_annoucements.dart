@@ -48,7 +48,6 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: _buildFab(context, ref),
-      bottomNavigationBar: _buildBottomNav(context, isDark),
     );
   }
 
@@ -558,49 +557,6 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111620).withOpacity(0.95),
-        border: const Border(top: BorderSide(color: Colors.white10)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 24,
-            offset: const Offset(0, -8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _navItem(icon: Icons.home, label: 'ホーム', active: true),
-          _navItem(icon: Icons.calendar_month, label: 'カレンダー'),
-          _navItem(icon: Icons.settings, label: '設定'),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem({required IconData icon, required String label, bool active = false}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: active ? primary : Colors.grey.shade500),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: active ? primary : Colors.grey.shade500,
-            fontWeight: active ? FontWeight.bold : FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<void> _openEditor(BuildContext context, WidgetRef ref, {String? initialRaw}) async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => CreateAnnouncementScreen(initialRaw: initialRaw)),
@@ -668,6 +624,9 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
   }
 
   String _imageUrlForDraft(Draft draft) {
+    if (draft.imageUrls.isNotEmpty) {
+      return draft.imageUrls.first;
+    }
     final index = draft.id.hashCode.abs() % previewImages.length;
     return previewImages[index];
   }

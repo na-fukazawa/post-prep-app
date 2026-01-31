@@ -17,6 +17,15 @@ class Draft {
   String title;
   int publishAt;
   List<String> targets;
+  String captionX;
+  String captionInstagram;
+  String hashtags;
+  String eventDate;
+  String venue;
+  String performers;
+  String ticketPrice;
+  String ticketUrl;
+  List<String> imageUrls;
 
   Draft({
     required this.id,
@@ -27,8 +36,18 @@ class Draft {
     this.title = '',
     int? publishAt,
     List<String>? targets,
+    this.captionX = '',
+    this.captionInstagram = '',
+    this.hashtags = '',
+    this.eventDate = '',
+    this.venue = '',
+    this.performers = '',
+    this.ticketPrice = '',
+    this.ticketUrl = '',
+    List<String>? imageUrls,
   })  : publishAt = publishAt ?? createdAt,
-        targets = targets ?? <String>[];
+        targets = targets ?? <String>[],
+        imageUrls = imageUrls ?? <String>[];
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -39,21 +58,39 @@ class Draft {
         'title': title,
         'publishAt': publishAt,
         'targets': targets,
+        'captionX': captionX,
+        'captionInstagram': captionInstagram,
+        'hashtags': hashtags,
+        'eventDate': eventDate,
+        'venue': venue,
+        'performers': performers,
+        'ticketPrice': ticketPrice,
+        'ticketUrl': ticketUrl,
+        'imageUrls': imageUrls,
       };
 
-  static Draft fromJson(Map<String, dynamic> j) => Draft(
-        id: j['id'] as String,
-        rawText: j['rawText'] as String,
-        generated: j['generated'] as String,
-        status: j['status'] as String,
-        createdAt: j['createdAt'] as int,
-        title: (j['title'] as String?) ?? '',
-        publishAt: j['publishAt'] as int? ?? j['createdAt'] as int,
-        targets: (j['targets'] as List?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            <String>[],
-      );
+  static Draft fromJson(Map<String, dynamic> j) {
+    final generated = (j['generated'] as String?) ?? '';
+    return Draft(
+      id: j['id'] as String,
+      rawText: (j['rawText'] as String?) ?? '',
+      generated: generated,
+      status: (j['status'] as String?) ?? 'draft',
+      createdAt: j['createdAt'] as int,
+      title: (j['title'] as String?) ?? '',
+      publishAt: j['publishAt'] as int? ?? j['createdAt'] as int,
+      targets: (j['targets'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+      captionX: (j['captionX'] as String?) ?? generated,
+      captionInstagram: (j['captionInstagram'] as String?) ?? generated,
+      hashtags: (j['hashtags'] as String?) ?? '',
+      eventDate: (j['eventDate'] as String?) ?? '',
+      venue: (j['venue'] as String?) ?? '',
+      performers: (j['performers'] as String?) ?? '',
+      ticketPrice: (j['ticketPrice'] as String?) ?? '',
+      ticketUrl: (j['ticketUrl'] as String?) ?? '',
+      imageUrls: (j['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+    );
+  }
 }
 
 class DraftStore {
@@ -99,5 +136,10 @@ class DraftStore {
     decoded.removeWhere((m) => (m['id'] as String) == id);
     final toStore = decoded.map((m) => jsonEncode(m)).toList();
     await prefs.setStringList(_key, toStore);
+  }
+
+  Future<void> clearAllDrafts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
   }
 }
