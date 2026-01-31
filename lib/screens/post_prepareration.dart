@@ -1,8 +1,10 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/draft_providers.dart';
 import '../services/draft_store.dart';
@@ -241,7 +243,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
         border: Border.all(color: const Color(0xFF123C3A)),
       ),
       child: const Text(
-        '投稿手順:\n① 本文をコピーする ② シェアボタンを押す ③ SNSが開いたら画像を貼り付けて投稿！',
+        '投稿手順:\n① 本文をコピーする ② シェアボタンを押す ③ SNSが開いたら画像・本文を確認して投稿！',
         style: TextStyle(
           fontSize: 12,
           height: 1.4,
@@ -603,13 +605,97 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
   }
 
   Future<void> _shareText(BuildContext context, WidgetRef ref, Draft draft, String text) async {
-    if (text.isEmpty) return;
+    if (text.isEmpty && draft.imageUrls.isEmpty) return;
     try {
-      await Share.share(text);
+      final shareFiles = await _prepareShareFiles(draft.imageUrls);
+      if (shareFiles.isNotEmpty) {
+        await Share.shareXFiles(
+          shareFiles,
+          text: text.isEmpty ? null : text,
+        );
+        return;
+      }
+      if (text.isNotEmpty) {
+        await Share.share(text);
+      }
     } catch (_) {
       await ref.read(draftListProvider.notifier).markFailed(draft);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('共有に失敗しました')));
+    }
+  }
+
+  Future<List<XFile>> _prepareShareFiles(List<String> imageUrls) async {
+    if (imageUrls.isEmpty) return <XFile>[];
+    final tempDir = await getTemporaryDirectory();
+    final client = HttpClient();
+    final files = <XFile>[];
+    try {
+      for (final url in imageUrls) {
+        if (files.length >= 4) break;
+        final trimmed = url.trim();
+        if (trimmed.isEmpty) continue;
+        if (_isRemoteImage(trimmed)) {
+          final downloaded = await _downloadImageToTemp(client, tempDir, trimmed, files.length);
+          if (downloaded != null) {
+            files.add(XFile(downloaded.path));
+          }
+          continue;
+        }
+        final file = File(trimmed);
+        if (await file.exists()) {
+          files.add(XFile(file.path));
+        }
+      }
+    } finally {
+      client.close(force: true);
+    }
+    return files;
+  }
+
+  Future<File?> _downloadImageToTemp(
+    HttpClient client,
+    Directory tempDir,
+    String url,
+    int index,
+  ) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    try {
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) return null;
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      if (bytes.isEmpty) return null;
+      final ext = _guessImageExtension(uri, response.headers.contentType?.mimeType);
+      final filename = 'share_${DateTime.now().millisecondsSinceEpoch}_$index$ext';
+      final file = File('${tempDir.path}/$filename');
+      await file.writeAsBytes(bytes, flush: true);
+      return file;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _guessImageExtension(Uri uri, String? mimeType) {
+    final path = uri.path;
+    final dot = path.lastIndexOf('.');
+    if (dot >= 0 && dot < path.length - 1) {
+      final ext = path.substring(dot);
+      if (ext.length <= 5) return ext;
+    }
+    switch (mimeType) {
+      case 'image/png':
+        return '.png';
+      case 'image/gif':
+        return '.gif';
+      case 'image/webp':
+        return '.webp';
+      case 'image/jpeg':
+      case 'image/jpg':
+        return '.jpg';
+      default:
+        return '.jpg';
     }
   }
 
