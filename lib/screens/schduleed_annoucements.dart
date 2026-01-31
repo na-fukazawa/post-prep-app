@@ -281,19 +281,6 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(22),
           child: Stack(
             children: [
-              if (!isFailed)
-                Positioned(
-                  right: -40,
-                  top: -50,
-                  child: Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: primary.withOpacity(0.08),
-                    ),
-                  ),
-                ),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
