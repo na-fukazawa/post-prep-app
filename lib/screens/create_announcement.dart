@@ -22,6 +22,8 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   static const Color surfaceDark = Color(0xFF161B26);
   static const Color inputDark = Color(0xFF1F2735);
   static const Color mutedText = Color(0xFF9AA3B2);
+  static const int xCharacterLimit = 280;
+  static const int xUrlLength = 23;
 
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _rawController;
@@ -110,7 +112,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   }
 
   Future<void> _save(String status) async {
-    if (!_validateRequired()) return;
+    if (!_validateRequired(status)) return;
     final now = DateTime.now();
     final captionInstagram = _captionInstagramController.text.trim();
     final captionX = _captionXController.text.trim();
@@ -122,7 +124,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       status: status,
       createdAt: widget.draft?.createdAt ?? now.millisecondsSinceEpoch,
       title: _titleController.text.trim(),
-      publishAt: _publishAt!.millisecondsSinceEpoch,
+      publishAt: _publishAt?.millisecondsSinceEpoch ?? widget.draft?.publishAt ?? now.millisecondsSinceEpoch,
       targets: _selectedTargets(),
       captionInstagram: captionInstagram,
       captionX: captionX,
@@ -142,42 +144,49 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     Navigator.of(context).pop();
   }
 
-  bool _validateRequired() {
+  bool _validateRequired(String status) {
     final formValid = _formKey.currentState?.validate() ?? true;
     var valid = formValid;
+    final requireScheduleFields = status == 'scheduled';
 
-    if (_publishAt == null) {
-      _publishAtError = '公開日時を選択してください。';
-      valid = false;
-    } else if (_publishAt!.isBefore(DateTime.now())) {
-      _publishAtError = '過去の日時は設定できません。';
-      valid = false;
+    if (requireScheduleFields) {
+      if (_publishAt == null) {
+        _publishAtError = '公開日時を選択してください。';
+        valid = false;
+      } else if (_publishAt!.isBefore(DateTime.now())) {
+        _publishAtError = '過去の日時は設定できません。';
+        valid = false;
+      } else {
+        _publishAtError = null;
+      }
+
+      if (_selectedTargets().isEmpty) {
+        _targetsError = '投稿対象を選択してください。';
+        valid = false;
+      } else {
+        _targetsError = null;
+      }
+
+      _captionError = null;
+      final captionInstagram = _captionInstagramController.text.trim();
+      final captionX = _captionXController.text.trim();
+      if (_targetInstagram && captionInstagram.isEmpty) {
+        _captionError = 'Instagramの本文は必須です。';
+        valid = false;
+      }
+      if (_targetX && captionX.isEmpty) {
+        _captionError ??= 'Xの本文は必須です。';
+        valid = false;
+      }
+      final captionXCombined = _composeWithHashtags(captionX);
+      if (_targetX && _countXCharacters(captionXCombined) > xCharacterLimit) {
+        _captionError = 'Xの文字数は$xCharacterLimit文字以内にしてください。';
+        valid = false;
+      }
     } else {
       _publishAtError = null;
-    }
-
-    if (_selectedTargets().isEmpty) {
-      _targetsError = '投稿対象を選択してください。';
-      valid = false;
-    } else {
       _targetsError = null;
-    }
-
-    _captionError = null;
-    final captionInstagram = _captionInstagramController.text.trim();
-    final captionX = _captionXController.text.trim();
-    if (_targetInstagram && captionInstagram.isEmpty) {
-      _captionError = 'Instagramの本文は必須です。';
-      valid = false;
-    }
-    if (_targetX && captionX.isEmpty) {
-      _captionError ??= 'Xの本文は必須です。';
-      valid = false;
-    }
-    final captionXCombined = _composeWithHashtags(captionX);
-    if (_targetX && captionXCombined.length > 140) {
-      _captionError = 'Xの文字数は140文字以内にしてください。';
-      valid = false;
+      _captionError = null;
     }
 
     if (!valid) {
@@ -574,14 +583,14 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   }
 
   Widget _buildXCount() {
-    final count = _composeWithHashtags(_captionXController.text).length;
-    final over = count > 140;
+    final count = _countXCharacters(_composeWithHashtags(_captionXController.text));
+    final over = count > xCharacterLimit;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const Text('X文字数', style: TextStyle(fontSize: 11, color: mutedText)),
         Text(
-          '$count/140',
+          '$count/$xCharacterLimit',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
@@ -632,6 +641,20 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     if (tags.isEmpty) return normalized;
     if (normalized.isEmpty) return tags;
     return '$normalized\n$tags';
+  }
+
+  int _countXCharacters(String text) {
+    if (text.isEmpty) return 0;
+    final urlRegex = RegExp(r'(https?:\/\/|www\.)\S+', caseSensitive: false);
+    var count = 0;
+    var last = 0;
+    for (final match in urlRegex.allMatches(text)) {
+      count += match.start - last;
+      count += xUrlLength;
+      last = match.end;
+    }
+    count += text.length - last;
+    return count;
   }
 
   Widget _sectionTitle(String text) {

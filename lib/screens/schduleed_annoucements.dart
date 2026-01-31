@@ -610,9 +610,10 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
 
     for (final draft in drafts) {
       final date = DateTime.fromMillisecondsSinceEpoch(draft.publishAt);
-      if (date.isBefore(cutoff)) {
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      if (!dateOnly.isBefore(today) && !dateOnly.isAfter(cutoff)) {
         week.add(draft);
-      } else {
+      } else if (dateOnly.isAfter(cutoff)) {
         future.add(draft);
       }
     }
