@@ -313,6 +313,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
             TextFormField(
               controller: _titleController,
               style: const TextStyle(color: Colors.white),
+              keyboardAppearance: Brightness.dark,
               decoration: _inputDecoration('ライブ名やイベント名'),
               validator: (value) => (value ?? '').trim().isEmpty ? 'タイトルは必須です。' : null,
             ),
@@ -325,18 +326,21 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                   TextField(
                     controller: _eventDateController,
                     style: const TextStyle(color: Colors.white),
+                    keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('イベント日時 例: 2024/02/01 19:00'),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _venueController,
                     style: const TextStyle(color: Colors.white),
+                    keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('会場'),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _performersController,
                     style: const TextStyle(color: Colors.white),
+                    keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('出演者'),
                   ),
                 ],
@@ -351,12 +355,14 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                   TextField(
                     controller: _ticketPriceController,
                     style: const TextStyle(color: Colors.white),
+                    keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('料金 例: 3,000円'),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _ticketUrlController,
                     style: const TextStyle(color: Colors.white),
+                    keyboardAppearance: Brightness.dark,
                     keyboardType: TextInputType.url,
                     decoration: _inputDecoration('チケットURL'),
                   ),
@@ -397,6 +403,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                     controller: _captionTabIndex == 0 ? _captionInstagramController : _captionXController,
                     maxLines: 6,
                     style: const TextStyle(color: Colors.white),
+                    keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('投稿用キャプション'),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -417,6 +424,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
               child: TextField(
                 controller: _hashtagsController,
                 style: const TextStyle(color: Colors.white),
+                keyboardAppearance: Brightness.dark,
                 decoration: _inputDecoration('#イベント #ライブ'),
               ),
             ),
@@ -594,6 +602,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                     controller: _imageUrlsController,
                     maxLines: 4,
                     style: const TextStyle(color: Colors.white),
+                    keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('https://example.com/image.jpg'),
                     onChanged: (_) {
                       setSheetState(() {});
@@ -713,6 +722,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                   controller: _rawController,
                   maxLines: 4,
                   style: const TextStyle(color: Colors.white),
+                  keyboardAppearance: Brightness.dark,
                   decoration: _inputDecoration('主催者からの詳細をペースト'),
                 ),
                 const SizedBox(height: 12),

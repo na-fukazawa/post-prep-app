@@ -112,6 +112,7 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
               TextField(
                 controller: _hashtagsController,
                 style: const TextStyle(color: Colors.white),
+                keyboardAppearance: Brightness.dark,
                 decoration: _inputDecoration('例: #ライブ #イベント'),
               ),
             ],
@@ -129,6 +130,7 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
                 controller: _templateController,
                 maxLines: 4,
                 style: const TextStyle(color: Colors.white),
+                keyboardAppearance: Brightness.dark,
                 decoration: _inputDecoration('例: 本日開催です！ぜひお越しください。'),
               ),
             ],
