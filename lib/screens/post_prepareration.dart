@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/draft_providers.dart';
 import '../services/draft_store.dart';
-import 'post_prep_screen.dart';
+import 'create_announcement.dart';
 
-class AnnouncementDetailScreen extends ConsumerWidget {
-  const AnnouncementDetailScreen({Key? key, required this.draftId}) : super(key: key);
+class PostPreparerationScreen extends ConsumerWidget {
+  const PostPreparerationScreen({Key? key, required this.draftId}) : super(key: key);
 
   final String draftId;
 
@@ -132,7 +132,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
         IconButton(
           onPressed: () async {
             await Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => PostPrepScreen(draft: draft)),
+              MaterialPageRoute(builder: (_) => CreateAnnouncementScreen(draft: draft)),
             );
             await ref.read(draftListProvider.notifier).refresh();
           },

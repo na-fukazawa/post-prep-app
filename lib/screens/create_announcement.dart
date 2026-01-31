@@ -4,17 +4,17 @@ import '../providers/draft_providers.dart';
 import '../services/caption_builder.dart';
 import '../services/draft_store.dart';
 
-class PostPrepScreen extends ConsumerStatefulWidget {
+class CreateAnnouncementScreen extends ConsumerStatefulWidget {
   final Draft? draft;
   final String? initialRaw;
 
-  const PostPrepScreen({Key? key, this.draft, this.initialRaw}) : super(key: key);
+  const CreateAnnouncementScreen({Key? key, this.draft, this.initialRaw}) : super(key: key);
 
   @override
-  ConsumerState<PostPrepScreen> createState() => _PostPrepScreenState();
+  ConsumerState<CreateAnnouncementScreen> createState() => _CreateAnnouncementScreenState();
 }
 
-class _PostPrepScreenState extends ConsumerState<PostPrepScreen> {
+class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScreen> {
   static const Color primary = Color(0xFF00FFCC);
   static const Color backgroundDark = Color(0xFF0E121A);
   static const Color surfaceDark = Color(0xFF161B26);

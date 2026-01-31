@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/draft_providers.dart';
 import '../services/draft_store.dart';
-import 'announcement_detail_screen.dart';
-import 'post_prep_screen.dart';
+import 'post_prepareration.dart';
+import 'create_announcement.dart';
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+class SchduleedAnnoucementsScreen extends ConsumerWidget {
+  const SchduleedAnnoucementsScreen({Key? key}) : super(key: key);
 
   static const Color primary = Color(0xFF00FFCC);
   static const Color backgroundDark = Color(0xFF0E121A);
@@ -603,14 +603,14 @@ class HomeScreen extends ConsumerWidget {
 
   Future<void> _openEditor(BuildContext context, WidgetRef ref, {String? initialRaw}) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PostPrepScreen(initialRaw: initialRaw)),
+      MaterialPageRoute(builder: (_) => CreateAnnouncementScreen(initialRaw: initialRaw)),
     );
     await ref.read(draftListProvider.notifier).refresh();
   }
 
   Future<void> _openDetail(BuildContext context, WidgetRef ref, String draftId) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AnnouncementDetailScreen(draftId: draftId)),
+      MaterialPageRoute(builder: (_) => PostPreparerationScreen(draftId: draftId)),
     );
     await ref.read(draftListProvider.notifier).refresh();
   }
