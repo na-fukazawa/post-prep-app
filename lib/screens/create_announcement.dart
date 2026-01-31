@@ -24,6 +24,8 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   static const Color mutedText = Color(0xFF9AA3B2);
   static const int xCharacterLimit = 280;
   static const int xUrlLength = 23;
+  static const String instagramIconAsset = 'assets/icons/instagram.jpg';
+  static const String xIconAsset = 'assets/icons/x.jpg';
 
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _rawController;
@@ -408,6 +410,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                     spacing: 8,
                     children: [
                       ChoiceChip(
+                        avatar: _platformAvatar(instagramIconAsset),
                         label: const Text('Instagram'),
                         selected: _captionTabIndex == 0,
                         onSelected: (_) => setState(() => _captionTabIndex = 0),
@@ -416,6 +419,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                         backgroundColor: inputDark,
                       ),
                       ChoiceChip(
+                        avatar: _platformAvatar(xIconAsset),
                         label: const Text('X'),
                         selected: _captionTabIndex == 1,
                         onSelected: (_) => setState(() => _captionTabIndex = 1),
@@ -501,6 +505,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                     spacing: 10,
                     children: [
                       FilterChip(
+                        avatar: _platformAvatar(xIconAsset),
                         selected: _targetX,
                         onSelected: (value) => setState(() => _targetX = value),
                         label: const Text('X'),
@@ -510,6 +515,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                         backgroundColor: inputDark,
                       ),
                       FilterChip(
+                        avatar: _platformAvatar(instagramIconAsset),
                         selected: _targetInstagram,
                         onSelected: (value) => setState(() => _targetInstagram = value),
                         label: const Text('Instagram'),
@@ -598,6 +604,17 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
           ),
         ),
       ],
+    );
+  }
+
+  Widget _platformAvatar(String assetPath) {
+    return ClipOval(
+      child: Image.asset(
+        assetPath,
+        width: 16,
+        height: 16,
+        fit: BoxFit.cover,
+      ),
     );
   }
 

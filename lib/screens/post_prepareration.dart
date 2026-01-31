@@ -22,6 +22,8 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
   static const Color surfaceDarkElevated = Color(0xFF1B2230);
   static const Color mutedText = Color(0xFF9AA3B2);
   static const Color subduedText = Color(0xFF7C8595);
+  static const String instagramIconAsset = 'assets/icons/instagram.jpg';
+  static const String xIconAsset = 'assets/icons/x.jpg';
 
   late final PageController _pageController;
   int _currentImageIndex = 0;
@@ -320,6 +322,9 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
     required String bodyText,
     required String actionLabel,
   }) {
+    final platformIcon = title.toLowerCase().contains('instagram')
+        ? instagramIconAsset
+        : xIconAsset;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -332,20 +337,14 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
         children: [
           Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F141F),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: Text(
-                    title.startsWith('X') ? 'X' : 'Ig',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ClipOval(
+                  child: Image.asset(
+                    platformIcon,
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.cover,
                   ),
                 ),
-              ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

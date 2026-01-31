@@ -15,6 +15,8 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
   static const Color chipBorder = Color(0xFF2A3240);
   static const Color mutedText = Color(0xFF9AA3B2);
   static const Color subduedText = Color(0xFF7C8595);
+  static const String instagramIconAsset = 'assets/icons/instagram.jpg';
+  static const String xIconAsset = 'assets/icons/x.jpg';
 
   static const List<String> previewImages = [
     'https://lh3.googleusercontent.com/aida-public/AB6AXuA1-L2pzadFAl73MEesP1ktDxNsaeVSg79ZDB82JN8bKuxQsRPBH_pdpZrmblPii1CQcIUs131V4-qCVCVQOrYm1QKqGlKdfBdRjjMC1cfbeQp41--t0ygT2XzVTS8mMXb7iF721S1JVtD_nylEF1B6OZkfcXUdaCZ1lWhW5cOLBlcrtYe4b4aGXhjnXNLG6TRDYCajAnkts7zN05rGF55hEuISADKRZVHwckKF4H2Uldwl2TeCXz7dNL95heNoq0dmFYPFZwXSuFPc',
@@ -502,24 +504,13 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _platformBadge(String text) {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+  Widget _platformBadge(String assetPath) {
+    return ClipOval(
+      child: Image.asset(
+        assetPath,
+        width: 22,
+        height: 22,
+        fit: BoxFit.cover,
       ),
     );
   }
@@ -635,14 +626,14 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
   List<String> _platformsForDraft(Draft draft) {
     if (draft.targets.isNotEmpty) {
       return draft.targets.map((target) {
-        if (target.toLowerCase() == 'instagram') return 'Ig';
-        return 'X';
+        if (target.toLowerCase() == 'instagram') return instagramIconAsset;
+        return xIconAsset;
       }).toList();
     }
     final index = draft.id.hashCode.abs() % 3;
-    if (index == 0) return ['X'];
-    if (index == 1) return ['Ig'];
-    return ['X', 'Ig'];
+    if (index == 0) return [xIconAsset];
+    if (index == 1) return [instagramIconAsset];
+    return [xIconAsset, instagramIconAsset];
   }
 }
 
