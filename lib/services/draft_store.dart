@@ -12,8 +12,11 @@ class Draft {
   String id;
   String rawText;
   String generated;
-  String status; // 'draft' or 'scheduled'
+  String status; // 'draft' | 'scheduled' | 'posted' | 'failed'
   int createdAt;
+  String title;
+  int publishAt;
+  List<String> targets;
 
   Draft({
     required this.id,
@@ -21,7 +24,11 @@ class Draft {
     required this.generated,
     required this.status,
     required this.createdAt,
-  });
+    this.title = '',
+    int? publishAt,
+    List<String>? targets,
+  })  : publishAt = publishAt ?? createdAt,
+        targets = targets ?? <String>[];
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -29,6 +36,9 @@ class Draft {
         'generated': generated,
         'status': status,
         'createdAt': createdAt,
+        'title': title,
+        'publishAt': publishAt,
+        'targets': targets,
       };
 
   static Draft fromJson(Map<String, dynamic> j) => Draft(
@@ -37,6 +47,12 @@ class Draft {
         generated: j['generated'] as String,
         status: j['status'] as String,
         createdAt: j['createdAt'] as int,
+        title: (j['title'] as String?) ?? '',
+        publishAt: j['publishAt'] as int? ?? j['createdAt'] as int,
+        targets: (j['targets'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            <String>[],
       );
 }
 
@@ -51,8 +67,8 @@ class DraftStore {
       final m = jsonDecode(s) as Map<String, dynamic>;
       return Draft.fromJson(m);
     }).toList()
-      // 作成日時の降順にソートして最新が上に来るようにする。
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      // 公開日時の降順にソートして最新が上に来るようにする。
+      ..sort((a, b) => b.publishAt.compareTo(a.publishAt));
   }
 
   Future<void> saveDraft(Draft draft) async {

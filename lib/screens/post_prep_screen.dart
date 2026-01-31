@@ -1,142 +1,354 @@
-// Post 編集画面: ユーザーが生のイベント情報を貼り付け、
-// キャプションを生成・コピー・共有・下書き保存できる画面。
-//
-// 主な責務:
-// - 入力テキストの管理 (TextEditingController)
-// - CaptionBuilder を使ったキャプション生成
-// - 生成結果のコピー / 共有 / 下書き保存
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/draft_providers.dart';
 import '../services/caption_builder.dart';
 import '../services/draft_store.dart';
 
-class PostPrepScreen extends StatefulWidget {
+class PostPrepScreen extends ConsumerStatefulWidget {
+  final Draft? draft;
   final String? initialRaw;
 
-  const PostPrepScreen({Key? key, this.initialRaw}) : super(key: key);
+  const PostPrepScreen({Key? key, this.draft, this.initialRaw}) : super(key: key);
 
   @override
-  State<PostPrepScreen> createState() => _PostPrepScreenState();
+  ConsumerState<PostPrepScreen> createState() => _PostPrepScreenState();
 }
 
-class _PostPrepScreenState extends State<PostPrepScreen> {
-  late TextEditingController _controller;
-  String _generated = '';
+class _PostPrepScreenState extends ConsumerState<PostPrepScreen> {
+  static const Color primary = Color(0xFF00FFCC);
+  static const Color backgroundDark = Color(0xFF0E121A);
+  static const Color surfaceDark = Color(0xFF161B26);
+  static const Color inputDark = Color(0xFF1F2735);
+  static const Color mutedText = Color(0xFF9AA3B2);
+
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _rawController;
+  late TextEditingController _titleController;
+  late TextEditingController _bodyController;
+  DateTime? _publishAt;
+  bool _targetX = true;
+  bool _targetInstagram = true;
   bool _isGenerating = false;
+  String? _publishAtError;
+  String? _targetsError;
 
   @override
   void initState() {
     super.initState();
-    // TextEditingController を初期化する。渡された initialRaw があれば
-    // テキストフィールドにセットして編集を開始できるようにする。
-    _controller = TextEditingController(text: widget.initialRaw ?? '');
+    final draft = widget.draft;
+    final initialRaw = draft?.rawText ?? widget.initialRaw ?? '';
+    _rawController = TextEditingController(text: initialRaw);
+    _bodyController = TextEditingController(text: draft?.generated ?? '');
+    _titleController = TextEditingController(
+      text: draft?.title.isNotEmpty == true ? draft?.title : _extractTitle(initialRaw, draft?.generated ?? ''),
+    );
+    _publishAt = draft != null ? DateTime.fromMillisecondsSinceEpoch(draft.publishAt) : null;
+    if (draft?.targets.isNotEmpty == true) {
+      final normalized = draft!.targets.map((target) => target.toLowerCase()).toList();
+      _targetX = normalized.contains('x') || normalized.contains('twitter');
+      _targetInstagram = normalized.contains('instagram');
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _rawController.dispose();
+    _titleController.dispose();
+    _bodyController.dispose();
     super.dispose();
   }
 
-  void _generate() {
-    // キャプションを生成する。簡易同期処理のため非同期処理は不要だが
-    // UI 表示のためフラグで状態管理を行う。
+  Future<void> _generateFromRaw() async {
     setState(() => _isGenerating = true);
-    final raw = _controller.text.trim();
+    final raw = _rawController.text.trim();
     final out = CaptionBuilder.buildCaption(raw);
     setState(() {
-      _generated = out;
+      _bodyController.text = out;
+      if (_titleController.text.trim().isEmpty) {
+        _titleController.text = _extractTitle(raw, out);
+      }
       _isGenerating = false;
     });
   }
 
-  Future<void> _copy() async {
-    await Clipboard.setData(ClipboardData(text: _generated));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('コピーしました')));
+  Future<void> _save(String status) async {
+    if (!_validateRequired()) return;
+    final now = DateTime.now();
+    final draft = Draft(
+      id: widget.draft?.id ?? now.millisecondsSinceEpoch.toString(),
+      rawText: _rawController.text.trim(),
+      generated: _bodyController.text.trim(),
+      status: status,
+      createdAt: widget.draft?.createdAt ?? now.millisecondsSinceEpoch,
+      title: _titleController.text.trim(),
+      publishAt: _publishAt!.millisecondsSinceEpoch,
+      targets: _selectedTargets(),
+    );
+    await ref.read(draftListProvider.notifier).save(draft);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(status == 'scheduled' ? '公開予約しました' : '下書きを保存しました')),
+    );
+    Navigator.of(context).pop();
   }
 
-  Future<void> _share() async {
-    if (_generated.isEmpty) return;
-    await Share.share(_generated);
+  bool _validateRequired() {
+    final formValid = _formKey.currentState?.validate() ?? true;
+    var valid = formValid;
+
+    if (_publishAt == null) {
+      _publishAtError = '公開日時を選択してください。';
+      valid = false;
+    } else {
+      _publishAtError = null;
+    }
+
+    if (_selectedTargets().isEmpty) {
+      _targetsError = '投稿対象を選択してください。';
+      valid = false;
+    } else {
+      _targetsError = null;
+    }
+
+    if (!valid) {
+      setState(() {});
+    }
+
+    return valid;
   }
 
-  Future<void> _saveDraft({String status = 'draft'}) async {
-    // 下書きを SharedPreferences に保存する。既に生成済みのキャプションが
-    // なければ再生成して保存する。id はミリ秒タイムスタンプで一意にする。
-    final raw = _controller.text.trim();
-    final generated = _generated.isNotEmpty ? _generated : CaptionBuilder.buildCaption(raw);
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final draft = Draft(id: id, rawText: raw, generated: generated, status: status, createdAt: DateTime.now().millisecondsSinceEpoch);
-    await DraftStore().saveDraft(draft);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('下書きを保存しました')));
+  List<String> _selectedTargets() {
+    final targets = <String>[];
+    if (_targetX) targets.add('x');
+    if (_targetInstagram) targets.add('instagram');
+    return targets;
+  }
+
+  String _extractTitle(String raw, String generated) {
+    final source = raw.trim().isNotEmpty ? raw : generated;
+    final firstLine = source.split(RegExp(r'\r?\n')).first.trim();
+    return firstLine.isEmpty ? '無題の告知' : firstLine;
+  }
+
+  String _formatDate(DateTime date) {
+    final year = date.year.toString();
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year/$month/$day';
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final base = _publishAt ?? now;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: base,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (date == null) return;
+    setState(() {
+      _publishAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        base.hour,
+        base.minute,
+      );
+      _publishAtError = null;
+    });
+  }
+
+  Future<void> _pickTime() async {
+    final now = DateTime.now();
+    final base = _publishAt ?? now;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: base.hour, minute: base.minute),
+    );
+    if (time == null) return;
+    setState(() {
+      _publishAt = DateTime(
+        base.year,
+        base.month,
+        base.day,
+        time.hour,
+        time.minute,
+      );
+      _publishAtError = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.draft != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('投稿準備')),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      backgroundColor: backgroundDark,
+      appBar: AppBar(
+        backgroundColor: backgroundDark,
+        elevation: 0,
+        title: Text(isEditing ? '告知編集' : '新規作成'),
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                maxLines: null,
-                expands: true,
-                decoration: const InputDecoration(
-                  hintText: 'ここに主催者から受け取ったイベント情報をそのまま貼り付けてください',
-                  border: OutlineInputBorder(),
-                ),
+            _sectionTitle('スマート入力'),
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '主催者から届いた情報を貼り付けると本文案を生成します。',
+                    style: TextStyle(fontSize: 12, color: mutedText, height: 1.4),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _rawController,
+                    maxLines: 4,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _inputDecoration('主催者からの詳細をペースト'),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isGenerating ? null : _generateFromRaw,
+                      icon: const Icon(Icons.auto_awesome),
+                      label: Text(_isGenerating ? '生成中...' : '情報を抽出して下書き作成'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 18),
+            _sectionTitle('告知タイトル'),
+            TextFormField(
+              controller: _titleController,
+              style: const TextStyle(color: Colors.white),
+              decoration: _inputDecoration('ライブ名やイベント名'),
+              validator: (value) => (value ?? '').trim().isEmpty ? 'タイトルは必須です。' : null,
+            ),
+            const SizedBox(height: 18),
+            _sectionTitle('投稿本文'),
+            TextFormField(
+              controller: _bodyController,
+              maxLines: 6,
+              style: const TextStyle(color: Colors.white),
+              decoration: _inputDecoration('投稿用キャプション'),
+              validator: (value) => (value ?? '').trim().isEmpty ? '本文は必須です。' : null,
+            ),
+            const SizedBox(height: 18),
+            _sectionTitle('公開日時'),
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _pickDate,
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF2B3546)),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text(_publishAt == null ? '日付を選ぶ' : _formatDate(_publishAt!)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _pickTime,
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF2B3546)),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Text(_publishAt == null ? '時間を選ぶ' : _formatTime(_publishAt!)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_publishAtError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(_publishAtError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            _sectionTitle('投稿対象SNS'),
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 10,
+                    children: [
+                      FilterChip(
+                        selected: _targetX,
+                        onSelected: (value) => setState(() => _targetX = value),
+                        label: const Text('X'),
+                        selectedColor: primary,
+                        checkmarkColor: Colors.black,
+                        labelStyle: TextStyle(color: _targetX ? Colors.black : Colors.white),
+                        backgroundColor: inputDark,
+                      ),
+                      FilterChip(
+                        selected: _targetInstagram,
+                        onSelected: (value) => setState(() => _targetInstagram = value),
+                        label: const Text('Instagram'),
+                        selectedColor: primary,
+                        checkmarkColor: Colors.black,
+                        labelStyle: TextStyle(color: _targetInstagram ? Colors.black : Colors.white),
+                        backgroundColor: inputDark,
+                      ),
+                    ],
+                  ),
+                  if (_targetsError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(_targetsError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
             Row(
               children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _save('draft'),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF2B3546)),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('下書き保存'),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _isGenerating ? null : _generate,
-                    child: Text(_isGenerating ? '生成中...' : 'キャプションを生成'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _saveDraft(status: 'draft'),
-                  child: const Text('下書きを保存'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text('生成されたキャプション', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: SingleChildScrollView(child: SelectableText(_generated.isEmpty ? 'まだ生成されていません' : _generated)),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _generated.isEmpty ? null : _copy,
-                    icon: const Icon(Icons.copy),
-                    label: const Text('コピー'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _generated.isEmpty ? null : _share,
-                    icon: const Icon(Icons.share),
-                    label: const Text('共有'),
+                    onPressed: () => _save('scheduled'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('公開予約'),
                   ),
                 ),
               ],
@@ -144,6 +356,42 @@ class _PostPrepScreenState extends State<PostPrepScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _sectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: mutedText,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _card({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surfaceDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF1F2735)),
+      ),
+      child: child,
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: mutedText),
+      filled: true,
+      fillColor: inputDark,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
     );
   }
 }

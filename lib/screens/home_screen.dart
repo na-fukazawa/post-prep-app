@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/draft_providers.dart';
 import '../services/draft_store.dart';
+import 'announcement_detail_screen.dart';
 import 'post_prep_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -59,6 +60,8 @@ class HomeScreen extends ConsumerWidget {
         return drafts.where((draft) => draft.status == 'draft').toList();
       case DraftFilter.posted:
         return drafts.where((draft) => draft.status == 'posted').toList();
+      case DraftFilter.failed:
+        return drafts.where((draft) => draft.status == 'failed').toList();
       case DraftFilter.all:
       default:
         return drafts;
@@ -246,8 +249,8 @@ class HomeScreen extends ConsumerWidget {
     final isPosted = status == 'posted';
     final title = _titleFromDraft(draft);
     final subtitle = _subtitleFromDraft(draft);
-    final timeLabel = _formatDateLabel(draft.createdAt);
-    final shortDateLabel = _formatShortDateLabel(draft.createdAt);
+    final timeLabel = _formatDateLabel(draft.publishAt);
+    final shortDateLabel = _formatShortDateLabel(draft.publishAt);
     final imageUrl = _imageUrlForDraft(draft);
     final platforms = _platformsForDraft(draft);
 
@@ -257,7 +260,7 @@ class HomeScreen extends ConsumerWidget {
 
     // タップで編集画面を開く
     return InkWell(
-      onTap: () => _openEditor(context, ref, initialRaw: draft.rawText),
+      onTap: () => _openDetail(context, ref, draft.id),
       borderRadius: BorderRadius.circular(22),
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -605,7 +608,15 @@ class HomeScreen extends ConsumerWidget {
     await ref.read(draftListProvider.notifier).refresh();
   }
 
+  Future<void> _openDetail(BuildContext context, WidgetRef ref, String draftId) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AnnouncementDetailScreen(draftId: draftId)),
+    );
+    await ref.read(draftListProvider.notifier).refresh();
+  }
+
   String _titleFromDraft(Draft draft) {
+    if (draft.title.trim().isNotEmpty) return draft.title.trim();
     final raw = draft.rawText.trim();
     if (raw.isEmpty) return '無題の告知';
     final firstLine = raw.split(RegExp(r'\r?\n')).first.trim();
@@ -642,7 +653,7 @@ class HomeScreen extends ConsumerWidget {
     final future = <Draft>[];
 
     for (final draft in drafts) {
-      final date = DateTime.fromMillisecondsSinceEpoch(draft.createdAt);
+      final date = DateTime.fromMillisecondsSinceEpoch(draft.publishAt);
       if (date.isBefore(cutoff)) {
         week.add(draft);
       } else {
@@ -662,6 +673,12 @@ class HomeScreen extends ConsumerWidget {
   }
 
   List<String> _platformsForDraft(Draft draft) {
+    if (draft.targets.isNotEmpty) {
+      return draft.targets.map((target) {
+        if (target.toLowerCase() == 'instagram') return 'Ig';
+        return 'X';
+      }).toList();
+    }
     final index = draft.id.hashCode.abs() % 3;
     if (index == 0) return ['X'];
     if (index == 1) return ['Ig'];

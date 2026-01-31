@@ -6,6 +6,7 @@ enum DraftFilter {
   scheduled,
   draft,
   posted,
+  failed,
 }
 
 extension DraftFilterLabel on DraftFilter {
@@ -19,6 +20,8 @@ extension DraftFilterLabel on DraftFilter {
         return '下書き';
       case DraftFilter.posted:
         return '投稿済み';
+      case DraftFilter.failed:
+        return '投稿失敗';
     }
   }
 }
@@ -48,17 +51,38 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
     await refresh();
   }
 
-  Future<void> markScheduled(Draft draft) async {
+  Future<void> save(Draft draft) async {
+    final store = ref.read(draftStoreProvider);
+    await store.saveDraft(draft);
+    await refresh();
+  }
+
+  Future<void> updateStatus(Draft draft, String status) async {
     final store = ref.read(draftStoreProvider);
     final updated = Draft(
       id: draft.id,
       rawText: draft.rawText,
       generated: draft.generated,
-      status: 'scheduled',
+      status: status,
       createdAt: draft.createdAt,
+      title: draft.title,
+      publishAt: draft.publishAt,
+      targets: draft.targets,
     );
     await store.saveDraft(updated);
     await refresh();
+  }
+
+  Future<void> markScheduled(Draft draft) async {
+    await updateStatus(draft, 'scheduled');
+  }
+
+  Future<void> markPosted(Draft draft) async {
+    await updateStatus(draft, 'posted');
+  }
+
+  Future<void> markFailed(Draft draft) async {
+    await updateStatus(draft, 'failed');
   }
 }
 
