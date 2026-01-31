@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../providers/draft_providers.dart';
 import '../providers/settings_providers.dart';
@@ -56,7 +56,8 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   String? _captionError;
   int _captionTabIndex = 0;
   bool _didApplyDefaults = false;
-  final ImagePicker _imagePicker = ImagePicker();
+  final List<AssetEntity> _selectedAssets = [];
+  final Map<String, String> _assetPathMap = {};
 
   @override
   void initState() {
@@ -157,20 +158,35 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
 
   Future<void> _pickImages() async {
     try {
-      final picked = await _imagePicker.pickMultiImage(
-        imageQuality: 90,
-        maxWidth: 2048,
-      );
-      if (picked.isEmpty) return;
-      final savedPaths = <String>[];
-      for (final file in picked) {
-        savedPaths.add(await _persistImage(file));
-      }
+      final picked = await _openAssetPicker();
+      if (picked == null) return;
+
       final existing = _parseImageUrls(_imageUrlsController.text);
-      _imageUrlsController.text = [...existing, ...savedPaths].join('\n');
-      if (mounted) {
-        setState(() {});
+      final remoteUrls = existing.where(_isRemoteImage).toList();
+      final preservedLocal = existing
+          .where((url) => !_isRemoteImage(url) && !_assetPathMap.containsValue(url))
+          .toList();
+
+      final savedPaths = <String>[];
+      for (final asset in picked) {
+        final assetId = asset.id;
+        var savedPath = _assetPathMap[assetId];
+        if (savedPath == null || savedPath.isEmpty) {
+          savedPath = await _persistAsset(asset);
+          if (savedPath.isNotEmpty) {
+            _assetPathMap[assetId] = savedPath;
+          }
+        }
+        if (savedPath != null && savedPath.isNotEmpty) {
+          savedPaths.add(savedPath);
+        }
       }
+
+      _selectedAssets
+        ..clear()
+        ..addAll(picked);
+      _imageUrlsController.text = [...remoteUrls, ...preservedLocal, ...savedPaths].join('\n');
+      if (mounted) setState(() {});
     } on PlatformException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -184,8 +200,43 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     }
   }
 
-  Future<String> _persistImage(XFile file) async {
-    final originalPath = file.path;
+  Future<List<AssetEntity>?> _openAssetPicker() async {
+    final permissionRequestOption = PermissionRequestOption(
+      androidPermission: const AndroidPermission(
+        type: RequestType.image,
+        mediaLocation: false,
+      ),
+    );
+    final permissionState = await AssetPicker.permissionCheck(
+      requestOption: permissionRequestOption,
+    );
+    final provider = DefaultAssetPickerProvider(
+      maxAssets: 50,
+      pageSize: defaultAssetsPerPage,
+      pathThumbnailSize: defaultPathThumbnailSize,
+      selectedAssets: List<AssetEntity>.from(_selectedAssets),
+      requestType: RequestType.image,
+    );
+    final delegate = _LargeConfirmAssetPickerBuilderDelegate(
+      provider: provider,
+      initialPermission: permissionState,
+      gridCount: 4,
+      gridThumbnailSize: defaultAssetGridPreviewSize,
+      previewThumbnailSize: null,
+      textDelegate: const _JapaneseConfirmTextDelegate(),
+    );
+    return AssetPicker.pickAssetsWithDelegate<AssetEntity, AssetPathEntity,
+        DefaultAssetPickerProvider>(
+      context,
+      delegate: delegate,
+      permissionRequestOption: permissionRequestOption,
+    );
+  }
+
+  Future<String> _persistAsset(AssetEntity asset) async {
+    final originalFile = await asset.originFile ?? await asset.file;
+    if (originalFile == null) return '';
+    final originalPath = originalFile.path;
     try {
       final root = await getApplicationDocumentsDirectory();
       final imagesDir = Directory('${root.path}/announcement_images');
@@ -196,7 +247,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       final stamp = DateTime.now().millisecondsSinceEpoch;
       final suffix = math.Random().nextInt(10000).toString().padLeft(4, '0');
       final filename = 'flyer_${stamp}_$suffix$ext';
-      final saved = await File(originalPath).copy('${imagesDir.path}/$filename');
+      final saved = await originalFile.copy('${imagesDir.path}/$filename');
       return saved.path;
     } catch (_) {
       return originalPath;
@@ -211,6 +262,8 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
 
   void _clearImages() {
     _imageUrlsController.clear();
+    _selectedAssets.clear();
+    _assetPathMap.clear();
     setState(() {});
   }
 
@@ -672,6 +725,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                     keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('https://example.com/image.jpg'),
                     onChanged: (_) {
+                      _syncSelectedAssetsWithUrls();
                       setSheetState(() {});
                       setState(() {});
                     },
@@ -1048,6 +1102,22 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
         .toList();
   }
 
+  void _syncSelectedAssetsWithUrls() {
+    if (_selectedAssets.isEmpty) return;
+    final urls = _parseImageUrls(_imageUrlsController.text);
+    if (urls.isEmpty) {
+      _selectedAssets.clear();
+      return;
+    }
+    final keepIds = <String>{};
+    for (final entry in _assetPathMap.entries) {
+      if (urls.contains(entry.value)) {
+        keepIds.add(entry.key);
+      }
+    }
+    _selectedAssets.removeWhere((asset) => !keepIds.contains(asset.id));
+  }
+
   bool _isRemoteImage(String value) {
     final uri = Uri.tryParse(value);
     if (uri == null) return false;
@@ -1110,6 +1180,91 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       fillColor: inputDark,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+    );
+  }
+}
+
+class _JapaneseConfirmTextDelegate extends JapaneseAssetPickerTextDelegate {
+  const _JapaneseConfirmTextDelegate();
+
+  @override
+  String get confirm => '決定';
+}
+
+class _LargeConfirmAssetPickerBuilderDelegate extends DefaultAssetPickerBuilderDelegate {
+  _LargeConfirmAssetPickerBuilderDelegate({
+    required super.provider,
+    required super.initialPermission,
+    super.gridCount,
+    super.pickerTheme,
+    super.specialItemPosition,
+    super.specialItemBuilder,
+    super.loadingIndicatorBuilder,
+    super.selectPredicate,
+    super.shouldRevertGrid,
+    super.limitedPermissionOverlayPredicate,
+    super.pathNameBuilder,
+    super.assetsChangeCallback,
+    super.assetsChangeRefreshPredicate,
+    super.viewerUseRootNavigator,
+    super.viewerPageRouteSettings,
+    super.viewerPageRouteBuilder,
+    super.themeColor,
+    super.textDelegate,
+    super.locale,
+    super.gridThumbnailSize,
+    super.previewThumbnailSize,
+    super.specialPickerType,
+    super.keepScrollOffset,
+    super.shouldAutoplayPreview,
+    super.dragToSelect,
+  });
+
+  static const double _confirmButtonHeight = 40;
+
+  @override
+  Widget confirmButton(BuildContext context) {
+    return AnimatedBuilder(
+      animation: provider,
+      builder: (_, __) {
+        final p = provider;
+        final bool isSelectedNotEmpty = p.isSelectedNotEmpty;
+        final bool shouldAllowConfirm =
+            isSelectedNotEmpty || p.previousSelectedAssets.isNotEmpty;
+        final String label = isSelectedNotEmpty && !isSingleAssetMode
+            ? '${textDelegate.confirm} (${p.selectedAssets.length}/${p.maxAssets})'
+            : textDelegate.confirm;
+        final String semanticsLabel = isSelectedNotEmpty && !isSingleAssetMode
+            ? '${semanticsTextDelegate.confirm} (${p.selectedAssets.length}/${p.maxAssets})'
+            : semanticsTextDelegate.confirm;
+        return MaterialButton(
+          minWidth: shouldAllowConfirm ? 72 : 52,
+          height: _confirmButtonHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          color: theme.colorScheme.secondary,
+          disabledColor: theme.splashColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+          onPressed: shouldAllowConfirm
+              ? () {
+                  Navigator.maybeOf(context)?.maybePop(p.selectedAssets);
+                }
+              : null,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          child: Text(
+            label,
+            semanticsLabel: semanticsLabel,
+            style: TextStyle(
+              color: shouldAllowConfirm
+                  ? theme.textTheme.bodyLarge?.color
+                  : theme.textTheme.bodySmall?.color,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      },
     );
   }
 }
