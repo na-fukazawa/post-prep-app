@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -201,14 +203,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
                   onPageChanged: (index) => setState(() => _currentImageIndex = index),
                   itemBuilder: (context, index) {
                     final imageUrl = imageUrls[index];
-                    return Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: surfaceDarkElevated,
-                        child: const Icon(Icons.image, color: mutedText, size: 40),
-                      ),
-                    );
+                    return _buildImageWidget(imageUrl);
                   },
                 ),
               ),
@@ -254,6 +249,25 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
           color: Colors.white70,
         ),
       ),
+    );
+  }
+
+  Widget _buildImageWidget(String imageUrl) {
+    final fallback = Container(
+      color: surfaceDarkElevated,
+      child: const Icon(Icons.image, color: mutedText, size: 40),
+    );
+    if (_isRemoteImage(imageUrl)) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+    return Image.file(
+      File(imageUrl),
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback,
     );
   }
 
@@ -613,6 +627,12 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
       return draft.imageUrls;
     }
     return [_imageUrlForDraft(draft)];
+  }
+
+  bool _isRemoteImage(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null) return false;
+    return uri.scheme == 'http' || uri.scheme == 'https';
   }
 
   String _imageUrlForDraft(Draft draft) {

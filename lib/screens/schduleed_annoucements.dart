@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/draft_providers.dart';
@@ -437,21 +439,7 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
     required String imageUrl,
     required List<String> platforms,
   }) {
-    final image = Image.network(
-      imageUrl,
-      width: 88,
-      height: 88,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
-        width: 88,
-        height: 88,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: surfaceDarkElevated,
-        ),
-        child: Icon(Icons.image, color: mutedText),
-      ),
-    );
+    final image = _buildThumbnailImage(imageUrl);
 
     final imageWidget = isFailed
         ? ColorFiltered(
@@ -488,6 +476,34 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildThumbnailImage(String imageUrl) {
+    final fallback = Container(
+      width: 88,
+      height: 88,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: surfaceDarkElevated,
+      ),
+      child: Icon(Icons.image, color: mutedText),
+    );
+    if (_isRemoteImage(imageUrl)) {
+      return Image.network(
+        imageUrl,
+        width: 88,
+        height: 88,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+    return Image.file(
+      File(imageUrl),
+      width: 88,
+      height: 88,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback,
     );
   }
 
@@ -608,6 +624,12 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
     }
     final index = draft.id.hashCode.abs() % previewImages.length;
     return previewImages[index];
+  }
+
+  bool _isRemoteImage(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null) return false;
+    return uri.scheme == 'http' || uri.scheme == 'https';
   }
 
   List<String> _platformsForDraft(Draft draft) {

@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../providers/draft_providers.dart';
 import '../providers/settings_providers.dart';
 import '../services/caption_builder.dart';
@@ -53,6 +56,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   String? _captionError;
   int _captionTabIndex = 0;
   bool _didApplyDefaults = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -149,6 +153,65 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       SnackBar(content: Text(status == 'scheduled' ? '公開予約しました' : '下書きを保存しました')),
     );
     Navigator.of(context).pop();
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final picked = await _imagePicker.pickMultiImage(
+        imageQuality: 90,
+        maxWidth: 2048,
+      );
+      if (picked.isEmpty) return;
+      final savedPaths = <String>[];
+      for (final file in picked) {
+        savedPaths.add(await _persistImage(file));
+      }
+      final existing = _parseImageUrls(_imageUrlsController.text);
+      _imageUrlsController.text = [...existing, ...savedPaths].join('\n');
+      if (mounted) {
+        setState(() {});
+      }
+    } on PlatformException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('写真の読み込みに失敗しました。権限を確認してください。')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('写真の読み込みに失敗しました。')),
+      );
+    }
+  }
+
+  Future<String> _persistImage(XFile file) async {
+    final originalPath = file.path;
+    try {
+      final root = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${root.path}/announcement_images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+      final ext = _fileExtension(originalPath);
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final suffix = math.Random().nextInt(10000).toString().padLeft(4, '0');
+      final filename = 'flyer_${stamp}_$suffix$ext';
+      final saved = await File(originalPath).copy('${imagesDir.path}/$filename');
+      return saved.path;
+    } catch (_) {
+      return originalPath;
+    }
+  }
+
+  String _fileExtension(String path) {
+    final dot = path.lastIndexOf('.');
+    if (dot <= 0 || dot == path.length - 1) return '';
+    return path.substring(dot);
+  }
+
+  void _clearImages() {
+    _imageUrlsController.clear();
+    setState(() {});
   }
 
   bool _validateRequired(String status) {
@@ -758,7 +821,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: _openImageUrlSheet,
+          onTap: _pickImages,
           child: _DashedBorder(
             color: borderDark,
             radius: 16,
@@ -782,12 +845,12 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        'フライヤー画像をアップロード',
+                        'フライヤー画像を選択',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        '推奨サイズ 4:5',
+                        '写真フォルダから選択（推奨サイズ 4:5）',
                         style: TextStyle(fontSize: 11, color: mutedText),
                       ),
                     ],
@@ -801,6 +864,32 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
           const SizedBox(height: 10),
           _buildImagePreview(urls),
         ],
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            TextButton.icon(
+              onPressed: _pickImages,
+              icon: const Icon(Icons.photo_library_outlined, size: 16),
+              label: Text(urls.isEmpty ? '写真を選択' : '写真を追加'),
+              style: TextButton.styleFrom(foregroundColor: mutedText),
+            ),
+            TextButton.icon(
+              onPressed: _openImageUrlSheet,
+              icon: const Icon(Icons.link, size: 16),
+              label: const Text('URLで入力'),
+              style: TextButton.styleFrom(foregroundColor: mutedText),
+            ),
+            if (urls.isNotEmpty)
+              TextButton.icon(
+                onPressed: _clearImages,
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('クリア'),
+                style: TextButton.styleFrom(foregroundColor: mutedText),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -837,6 +926,12 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
 
   Widget _buildImagePreview(List<String> urls) {
     final previews = urls.take(4).toList();
+    final placeholder = Container(
+      width: 64,
+      height: 64,
+      color: inputDark,
+      child: const Icon(Icons.image, color: mutedText),
+    );
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -844,18 +939,21 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
         for (final url in previews)
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              url,
-              width: 64,
-              height: 64,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 64,
-                height: 64,
-                color: inputDark,
-                child: const Icon(Icons.image, color: mutedText),
-              ),
-            ),
+            child: _isRemoteImage(url)
+                ? Image.network(
+                    url,
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => placeholder,
+                  )
+                : Image.file(
+                    File(url),
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => placeholder,
+                  ),
           ),
       ],
     );
@@ -867,6 +965,12 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
+  }
+
+  bool _isRemoteImage(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null) return false;
+    return uri.scheme == 'http' || uri.scheme == 'https';
   }
 
   String _composeWithHashtags(String base) {
