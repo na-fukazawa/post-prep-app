@@ -817,6 +817,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
 
   Widget _buildImageUploadCard() {
     final urls = _parseImageUrls(_imageUrlsController.text);
+    const double pickerHeight = 240;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -833,29 +834,31 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                 color: surfaceDark,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: AspectRatio(
-                aspectRatio: 4 / 5,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _UploadIcon(
-                        backgroundColor: inputDark,
-                        iconColor: primary,
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'フライヤー画像を選択',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '写真フォルダから選択（推奨サイズ 4:5）',
-                        style: TextStyle(fontSize: 11, color: mutedText),
-                      ),
-                    ],
-                  ),
-                ),
+              child: SizedBox(
+                height: pickerHeight,
+                child: urls.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _UploadIcon(
+                              backgroundColor: inputDark,
+                              iconColor: primary,
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'フライヤー画像を選択',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              '写真フォルダから選択（推奨サイズ 4:5）',
+                              style: TextStyle(fontSize: 11, color: mutedText),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _buildPickerPreview(urls),
               ),
             ),
           ),
@@ -926,9 +929,10 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
 
   Widget _buildImagePreview(List<String> urls) {
     final previews = urls.take(4).toList();
+    const double previewSize = 80;
     final placeholder = Container(
-      width: 64,
-      height: 64,
+      width: previewSize,
+      height: previewSize,
       color: inputDark,
       child: const Icon(Icons.image, color: mutedText),
     );
@@ -942,19 +946,96 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
             child: _isRemoteImage(url)
                 ? Image.network(
                     url,
-                    width: 64,
-                    height: 64,
+                    width: previewSize,
+                    height: previewSize,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => placeholder,
                   )
                 : Image.file(
                     File(url),
-                    width: 64,
-                    height: 64,
+                    width: previewSize,
+                    height: previewSize,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => placeholder,
                   ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildPickerPreview(List<String> urls) {
+    const EdgeInsets imagePadding = EdgeInsets.all(16);
+    final placeholder = Container(
+      margin: imagePadding,
+      decoration: BoxDecoration(
+        color: inputDark,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(Icons.image, color: mutedText),
+    );
+    Widget buildImage(String url) {
+      final image = _isRemoteImage(url)
+          ? Image.network(
+              url,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => placeholder,
+            )
+          : Image.file(
+              File(url),
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => placeholder,
+            );
+      return Padding(
+        padding: imagePadding,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: ColoredBox(
+            color: inputDark,
+            child: image,
+          ),
+        ),
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          itemCount: urls.length,
+          itemBuilder: (context, index) => buildImage(urls[index]),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                surfaceDark.withOpacity(0.55),
+              ],
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: surfaceDark.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.photo_library_outlined, size: 14, color: Colors.white70),
+                  SizedBox(width: 6),
+                  Text('タップして変更', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
