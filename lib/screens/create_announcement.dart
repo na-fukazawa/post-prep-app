@@ -300,11 +300,14 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
           child: Divider(height: 1, color: Color(0xFF1F2735)),
         ),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: [
+      body: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            children: [
             _buildSmartInputCard(),
             const SizedBox(height: 18),
             _buildImageUploadCard(),
@@ -532,7 +535,8 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                 ),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

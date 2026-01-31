@@ -49,18 +49,22 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
         elevation: 0,
         title: const Text('設定'),
       ),
-      body: SafeArea(
-        child: settingsAsync.when(
-          data: (settings) {
-            if (!_didInit) {
-              _hashtagsController.text = settings.defaultHashtags;
-              _templateController.text = settings.defaultTemplate;
-              _didInit = true;
-            }
-            return _buildContent(settings);
-          },
-          loading: () => const Center(child: CircularProgressIndicator(color: primary)),
-          error: (_, __) => _buildErrorState(),
+      body: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        child: SafeArea(
+          child: settingsAsync.when(
+            data: (settings) {
+              if (!_didInit) {
+                _hashtagsController.text = settings.defaultHashtags;
+                _templateController.text = settings.defaultTemplate;
+                _didInit = true;
+              }
+              return _buildContent(settings);
+            },
+            loading: () => const Center(child: CircularProgressIndicator(color: primary)),
+            error: (_, __) => _buildErrorState(),
+          ),
         ),
       ),
     );
