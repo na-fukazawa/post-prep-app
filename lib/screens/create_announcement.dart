@@ -351,7 +351,6 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                   TextField(
                     controller: _ticketPriceController,
                     style: const TextStyle(color: Colors.white),
-                    keyboardType: TextInputType.number,
                     decoration: _inputDecoration('料金 例: 3,000円'),
                   ),
                   const SizedBox(height: 10),
