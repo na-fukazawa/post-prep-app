@@ -62,22 +62,36 @@ class XAuthService {
     );
 
     final completer = Completer<Uri>();
-    late StreamSubscription<Uri> subscription;
-    subscription = _appLinks.uriLinkStream.listen((uri) {
-      if (_matchesRedirect(uri)) {
-        completer.complete(uri);
-        subscription.cancel();
+    StreamSubscription<Uri>? subscription;
+
+    Future<void> tryComplete(Uri uri) async {
+      if (completer.isCompleted) return;
+      if (!_matchesRedirect(uri)) return;
+      final returnedState = uri.queryParameters['state'];
+      if (returnedState == null || returnedState.isEmpty || returnedState != state) {
+        return;
       }
+      completer.complete(uri);
+      await subscription?.cancel();
+    }
+
+    subscription = _appLinks.uriLinkStream.listen((uri) {
+      tryComplete(uri);
     });
+
+    final initial = await _appLinks.getInitialLink();
+    if (initial != null) {
+      await tryComplete(initial);
+    }
 
     final launched = await launchUrl(authorizationUri, mode: LaunchMode.externalApplication);
     if (!launched) {
-      await subscription.cancel();
+      await subscription?.cancel();
       throw const XAuthException('ブラウザを開けませんでした。');
     }
 
     final redirectUri = await completer.future.timeout(const Duration(minutes: 2), onTimeout: () async {
-      await subscription.cancel();
+      await subscription?.cancel();
       throw const XAuthException('認証がタイムアウトしました。');
     });
 

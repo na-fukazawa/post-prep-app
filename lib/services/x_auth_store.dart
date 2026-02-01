@@ -45,7 +45,11 @@ class XAuthStore {
         profileImageUrl: null,
         token: legacy,
       );
-      await saveAccount(legacyAccount, makeActive: true, clearLegacy: false);
+      await _storage.write(
+        key: _accountsKey,
+        value: jsonEncode([legacyAccount.toJson()]),
+      );
+      await setActiveUser(legacyAccount.userId);
       return <XAccount>[legacyAccount];
     }
     try {
