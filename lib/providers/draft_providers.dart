@@ -83,6 +83,8 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
       ticketPrice: draft.ticketPrice,
       ticketUrl: draft.ticketUrl,
       imageUrls: draft.imageUrls,
+      xTaggedUserIds: draft.xTaggedUserIds,
+      xTaggedUsernames: draft.xTaggedUsernames,
     );
     await store.saveDraft(updated);
     await refresh();

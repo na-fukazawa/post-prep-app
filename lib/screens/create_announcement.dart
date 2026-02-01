@@ -147,6 +147,8 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       ticketPrice: _ticketPriceController.text.trim(),
       ticketUrl: _ticketUrlController.text.trim(),
       imageUrls: _parseImageUrls(_imageUrlsController.text),
+      xTaggedUserIds: widget.draft?.xTaggedUserIds,
+      xTaggedUsernames: widget.draft?.xTaggedUsernames,
     );
     await ref.read(draftListProvider.notifier).save(draft);
     if (!mounted) return;

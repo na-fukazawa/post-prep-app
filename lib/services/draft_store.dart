@@ -26,6 +26,8 @@ class Draft {
   String ticketPrice;
   String ticketUrl;
   List<String> imageUrls;
+  List<String> xTaggedUserIds;
+  List<String> xTaggedUsernames;
 
   Draft({
     required this.id,
@@ -45,9 +47,13 @@ class Draft {
     this.ticketPrice = '',
     this.ticketUrl = '',
     List<String>? imageUrls,
+    List<String>? xTaggedUserIds,
+    List<String>? xTaggedUsernames,
   })  : publishAt = publishAt ?? createdAt,
         targets = targets ?? <String>[],
-        imageUrls = imageUrls ?? <String>[];
+        imageUrls = imageUrls ?? <String>[],
+        xTaggedUserIds = xTaggedUserIds ?? <String>[],
+        xTaggedUsernames = xTaggedUsernames ?? <String>[];
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -67,6 +73,8 @@ class Draft {
         'ticketPrice': ticketPrice,
         'ticketUrl': ticketUrl,
         'imageUrls': imageUrls,
+        'xTaggedUserIds': xTaggedUserIds,
+        'xTaggedUsernames': xTaggedUsernames,
       };
 
   static Draft fromJson(Map<String, dynamic> j) {
@@ -89,6 +97,10 @@ class Draft {
       ticketPrice: (j['ticketPrice'] as String?) ?? '',
       ticketUrl: (j['ticketUrl'] as String?) ?? '',
       imageUrls: (j['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+      xTaggedUserIds:
+          (j['xTaggedUserIds'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+      xTaggedUsernames:
+          (j['xTaggedUsernames'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
     );
   }
 }

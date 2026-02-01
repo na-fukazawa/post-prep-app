@@ -7,8 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/draft_providers.dart';
+import '../providers/x_auth_providers.dart';
 import '../services/draft_store.dart';
+import '../services/x_feature_flags.dart';
 import 'create_announcement.dart';
+import 'x_post_composer.dart';
 
 class PostPreparerationScreen extends ConsumerStatefulWidget {
   const PostPreparerationScreen({Key? key, required this.draftId}) : super(key: key);
@@ -43,6 +46,9 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
   void initState() {
     super.initState();
     _pageController = PageController();
+    if (XFeatureFlags.enableDirectPost) {
+      Future.microtask(() => ref.read(xAuthProvider.notifier).init());
+    }
   }
 
   @override
@@ -54,6 +60,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
   @override
   Widget build(BuildContext context) {
     final draftsAsync = ref.watch(draftListProvider);
+    final xAuthState = XFeatureFlags.enableDirectPost ? ref.watch(xAuthProvider) : null;
 
     return Scaffold(
       backgroundColor: backgroundDark,
@@ -78,6 +85,9 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
             final isFailed = draft.status == 'failed';
             final isPosted = draft.status == 'posted';
             final heroImages = _heroImagesForDraft(draft);
+            final xActionLabel = XFeatureFlags.enableDirectPost
+                ? (xAuthState?.isConnected == true ? 'Xに投稿' : 'X連携して投稿')
+                : 'Xでシェア';
 
             return Stack(
               children: [
@@ -112,7 +122,10 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
                           stepLabel: 'ステップ 1: 本文',
                           badgeText: '${captionX.length}文字',
                           bodyText: captionX,
-                          actionLabel: 'Xでシェア',
+                          actionLabel: xActionLabel,
+                          onSharePressed: XFeatureFlags.enableDirectPost
+                              ? () => _openXComposer(context, ref, draft, captionX)
+                              : () => _shareText(context, ref, draft, captionX),
                         ),
                       ],
                       if (showIg) ...[
@@ -337,6 +350,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
     required String badgeText,
     required String bodyText,
     required String actionLabel,
+    VoidCallback? onSharePressed,
   }) {
     final platformIcon = title.toLowerCase().contains('instagram')
         ? instagramIconAsset
@@ -433,7 +447,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _shareText(context, ref, draft, bodyText),
+              onPressed: onSharePressed ?? () => _shareText(context, ref, draft, bodyText),
               icon: const Icon(Icons.ios_share, size: 18),
               label: Text(actionLabel),
               style: ElevatedButton.styleFrom(
@@ -623,6 +637,28 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('共有に失敗しました')));
     }
+  }
+
+  Future<void> _openXComposer(BuildContext context, WidgetRef ref, Draft draft, String text) async {
+    final authState = ref.read(xAuthProvider);
+    if (!authState.isConnected) {
+      final ok = await ref.read(xAuthProvider.notifier).signIn();
+      if (!ok) {
+        if (!context.mounted) return;
+        final error = ref.read(xAuthProvider).error ?? 'X連携に失敗しました。';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+    }
+    if (!context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => XPostComposerScreen(
+          draft: draft,
+          initialText: text,
+        ),
+      ),
+    );
   }
 
   Future<List<XFile>> _prepareShareFiles(List<String> imageUrls) async {
