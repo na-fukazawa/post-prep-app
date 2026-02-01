@@ -33,6 +33,27 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   static const int xUrlLength = 23;
   static const String instagramIconAsset = 'assets/icons/instagram.jpg';
   static const String xIconAsset = 'assets/icons/x.jpg';
+  static const String _defaultPromptTemplate = '''
+以下のライブ告知を例に従って整形してください。
+入力
+{input}
+
+出力例
+{example}
+
+ルール:
+- 出力例の構成・順序・記号/絵文字/改行を基本として忠実に合わせる。
+- 挨拶/依頼/連絡/告知開始時間/お礼などの文章は削除し、イベント情報のみ残す。
+- 日付は「YYYY.MM.DD(曜)」に統一。年が無い場合は現在の年で補完。曜日が無ければ補完する。
+- 会場は日付行の直後の単独行を優先して📍行に入れる。
+- イベント名は会場行の次から、出演一覧の直前までのブロックを使用。
+- 出演は1行1組で「/」区切りや末尾の「/」は削除。括弧内の地域情報は残す。
+- 時間は「OPEN hh:mm / START hh:mm」に統一。
+- 料金は「ADV ¥x,xxx / DOOR ¥x,xxx (+1D)」に統一。金額はカンマを入れる。
+- 不明な項目はその行ごと省略し、空行は詰めすぎず出力例に合わせる。
+- 余計な説明は出さず、完成した告知文のみを出力する。
+-他の情報はカットしてください。
+''';
 
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _rawController;
@@ -95,16 +116,33 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     final settings = ref.read(settingsProvider).value;
     final template = settings?.defaultTemplate.trim() ?? '';
     final title = _titleController.text.trim();
+    final prompt = _buildPrompt(
+      promptTemplate: _defaultPromptTemplate,
+      raw: raw,
+      title: title,
+      template: template,
+    );
 
     Object? formatError;
+    bool budgetExceeded = false;
     final formatService = ref.read(liveFormatServiceProvider);
     String formatted;
     try {
-      formatted = await formatService.format(
+      final result = await formatService.format(
         text: raw,
         title: title,
         template: template,
+        prompt: prompt,
       );
+      budgetExceeded = result.budgetExceeded;
+      formatted = result.text;
+      if (budgetExceeded && formatted.trim().isEmpty) {
+        formatted = _buildFallbackFormatted(
+          raw: raw,
+          title: title,
+          template: template,
+        );
+      }
     } catch (error) {
       formatError = error;
       formatted = _buildFallbackFormatted(
@@ -120,7 +158,11 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       _isGenerating = false;
     });
 
-    if (formatError != null && mounted) {
+    if (budgetExceeded && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('今月のAI予算に達したため、テンプレート整形で表示しました。')),
+      );
+    } else if (formatError != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('AI整形に失敗しました。テンプレートのみ反映しました。')),
       );
@@ -156,6 +198,28 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     final fallbackBody = trimmedTitle.isEmpty ? trimmedRaw : '$trimmedTitle\n\n$trimmedRaw';
     if (fallbackBody.isEmpty) return output.trim();
     return '$output\n\n$fallbackBody'.trim();
+  }
+
+  String? _buildPrompt({
+    required String promptTemplate,
+    required String raw,
+    required String title,
+    required String template,
+  }) {
+    final trimmedPrompt = promptTemplate.trim();
+    if (trimmedPrompt.isEmpty) return null;
+    var output = trimmedPrompt;
+    output = output.replaceAll('{{input}}', raw);
+    output = output.replaceAll('{input}', raw);
+    output = output.replaceAll('{{body}}', raw);
+    output = output.replaceAll('{body}', raw);
+    output = output.replaceAll('{{example}}', template);
+    output = output.replaceAll('{example}', template);
+    output = output.replaceAll('{{template}}', template);
+    output = output.replaceAll('{template}', template);
+    output = output.replaceAll('{{title}}', title);
+    output = output.replaceAll('{title}', title);
+    return output.trim();
   }
 
   Future<void> _save(String status) async {

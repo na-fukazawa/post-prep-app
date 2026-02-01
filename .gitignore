@@ -66,6 +66,8 @@ unlinked_spec.ds
 **/ios/**/*.perspectivev3
 **/ios/**/*sync/
 **/ios/**/.sconsign.dblite
+server/data/
+*.sqlite
 **/ios/**/.tags*
 **/ios/**/.vagrant/
 **/ios/**/DerivedData/
