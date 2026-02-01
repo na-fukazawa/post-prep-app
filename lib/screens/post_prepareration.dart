@@ -38,7 +38,6 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
 
   bool _awaitingXReturn = false;
   bool _pendingDeletePrompt = false;
-  bool _isShowingDeletePrompt = false;
   List<String> _lastSavedAssetIds = <String>[];
 
   late final PageController _pageController;
@@ -73,7 +72,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
     if (state != AppLifecycleState.resumed) return;
     if (!_awaitingXReturn || !_pendingDeletePrompt) return;
     _awaitingXReturn = false;
-    _showDeletePromptIfNeeded();
+    _attemptDeleteSavedImages();
   }
 
   @override
@@ -691,7 +690,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
           return;
         }
         if (_pendingDeletePrompt) {
-          _showDeletePromptIfNeeded();
+          _attemptDeleteSavedImages();
         }
       }
       await _shareTextWithFiles(context, ref, draft, text, shareFiles);
@@ -751,38 +750,8 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
     return launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  Future<void> _showDeletePromptIfNeeded() async {
-    if (_isShowingDeletePrompt || _lastSavedAssetIds.isEmpty || !mounted) return;
-    _isShowingDeletePrompt = true;
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('保存した画像を削除しますか？'),
-          content: const Text('X投稿に使った画像を写真アプリから削除します。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('削除しない'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('削除する'),
-            ),
-          ],
-        );
-      },
-    );
-    _isShowingDeletePrompt = false;
-    if (!mounted) return;
-    if (shouldDelete == true) {
-      await _deleteSavedImages();
-    }
-    _pendingDeletePrompt = false;
-    _lastSavedAssetIds = <String>[];
-  }
-
-  Future<void> _deleteSavedImages() async {
+  Future<void> _attemptDeleteSavedImages() async {
+    if (!mounted || _lastSavedAssetIds.isEmpty) return;
     final state = await PhotoManager.requestPermissionExtend(
       requestOption: const PermissionRequestOption(
         iosAccessLevel: IosAccessLevel.readWrite,
@@ -792,7 +761,11 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
         ),
       ),
     );
-    if (!state.hasAccess || _lastSavedAssetIds.isEmpty) return;
+    if (!state.hasAccess) {
+      _pendingDeletePrompt = false;
+      _lastSavedAssetIds = <String>[];
+      return;
+    }
     try {
       final deleted = await PhotoManager.editor.deleteWithIds(_lastSavedAssetIds);
       if (!mounted) return;
@@ -801,6 +774,9 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('画像の削除に失敗しました')));
+    } finally {
+      _pendingDeletePrompt = false;
+      _lastSavedAssetIds = <String>[];
     }
   }
 
