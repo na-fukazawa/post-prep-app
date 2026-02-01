@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/draft_providers.dart';
 import '../providers/settings_providers.dart';
@@ -54,7 +55,21 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
       appBar: AppBar(
         backgroundColor: backgroundDark,
         elevation: 0,
-        title: const Text('設定'),
+        centerTitle: true,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        title: const Text(
+          '設定',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFF1F2735)),
+        ),
       ),
       body: Listener(
         behavior: HitTestBehavior.translucent,

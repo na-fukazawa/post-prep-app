@@ -39,13 +39,7 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
         child: draftsAsync.when(
           data: (drafts) {
             final filtered = _applyFilter(drafts, filter);
-            return RefreshIndicator(
-              color: primary,
-              backgroundColor: surfaceDark,
-              displacement: 32,
-              onRefresh: () => ref.read(draftListProvider.notifier).refresh(),
-              child: _buildBody(context, ref, filtered, filter, isDark),
-            );
+            return _buildBody(context, ref, filtered, filter, isDark);
           },
           loading: () => const Center(child: CircularProgressIndicator(color: primary)),
           error: (_, __) => _buildErrorState(context, ref),
@@ -95,38 +89,50 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
   Widget _buildBody(BuildContext context, WidgetRef ref, List<Draft> drafts, DraftFilter filter, bool isDark) {
     final sections = _buildSections(drafts);
 
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(child: _buildHeader(context, isDark)),
-        SliverToBoxAdapter(child: _buildFilterChips(ref, filter, isDark)),
-        if (drafts.isEmpty)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _buildEmptyState(context, isDark),
-          )
-        else
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 140),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  for (final section in sections) ...[
-                    _sectionHeader(section.title),
-                    const SizedBox(height: 12),
-                    for (final draft in section.items) ...[
-                      _announcementCard(
-                        context,
-                        ref,
-                        draft: draft,
+    return Column(
+      children: [
+        _buildHeader(context, isDark),
+        _buildFilterChips(ref, filter, isDark),
+        Expanded(
+          child: RefreshIndicator(
+            color: primary,
+            backgroundColor: surfaceDark,
+            displacement: 32,
+            onRefresh: () => ref.read(draftListProvider.notifier).refresh(),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                if (drafts.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _buildEmptyState(context, isDark),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 140),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate(
+                        [
+                          for (final section in sections) ...[
+                            _sectionHeader(section.title),
+                            const SizedBox(height: 12),
+                            for (final draft in section.items) ...[
+                              _announcementCard(
+                                context,
+                                ref,
+                                draft: draft,
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                  ],
-                ],
-              ),
+                    ),
+                  ),
+              ],
             ),
           ),
+        ),
       ],
     );
   }
@@ -141,21 +147,14 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
           Text(
             '投稿予定一覧',
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.1,
               color: Colors.white,
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            'ローカル保存のスケジュール',
-            style: TextStyle(
-              fontSize: 12,
-              color: subduedText,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          const SizedBox(height: 0),
         ],
       ),
     );
@@ -451,30 +450,33 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
     return SizedBox(
       width: 88,
       height: 88,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ClipRRect(borderRadius: BorderRadius.circular(14), child: imageWidget),
-          if (platforms.isNotEmpty)
-            Positioned(
-              bottom: -6,
-              right: -6,
-              child: Row(
-                children: [
-                  for (var i = 0; i < platforms.length; i++) ...[
-                    _platformBadge(platforms[i]),
-                    if (i != platforms.length - 1) const SizedBox(width: 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned.fill(child: imageWidget),
+            if (platforms.isNotEmpty)
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < platforms.length; i++) ...[
+                      _platformBadge(platforms[i]),
+                      if (i != platforms.length - 1) const SizedBox(width: 4),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          if (isFailed)
-            Positioned(
-              bottom: -6,
-              left: -6,
-              child: _errorBadge(),
-            ),
-        ],
+            if (isFailed)
+              Positioned(
+                bottom: 4,
+                left: 4,
+                child: _errorBadge(),
+              ),
+          ],
+        ),
       ),
     );
   }
