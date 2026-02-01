@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'app_setting.dart';
 import 'calendar_screen.dart';
 import 'schduleed_annoucements.dart';
+import '../services/notification_service.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({Key? key}) : super(key: key);
@@ -10,7 +11,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   static const Color primary = Color(0xFF00FFCC);
 
   int _index = 0;
@@ -20,6 +21,28 @@ class _AppShellState extends State<AppShell> {
     CalendarScreen(),
     AppSettingScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.instance.handleInitialNotificationTap();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationService.instance.handleInitialNotificationTap();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/draft_providers.dart';
 import '../providers/settings_providers.dart';
 import '../providers/x_auth_providers.dart';
+import '../services/notification_service.dart';
 import '../services/settings_store.dart';
 import '../services/x_auth_store.dart';
 import '../services/x_feature_flags.dart';
@@ -118,7 +119,20 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
           child: SwitchListTile(
             value: settings.notificationsEnabled,
             activeColor: primary,
-            onChanged: (value) => ref.read(settingsProvider.notifier).updateNotifications(value),
+            onChanged: (value) async {
+              if (value) {
+                final granted = await NotificationService.instance.requestPermissions();
+                if (!granted) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('通知が許可されていません。端末設定で許可してください。')),
+                  );
+                  return;
+                }
+              }
+              await ref.read(settingsProvider.notifier).updateNotifications(value);
+              await ref.read(draftListProvider.notifier).syncNotificationsForAll(enabled: value);
+            },
             title: const Text('通知を有効にする', style: TextStyle(color: Colors.white)),
             subtitle: const Text('OFFの場合は通知登録を行いません。', style: TextStyle(color: mutedText)),
           ),

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/draft_store.dart';
+import '../services/notification_service.dart';
+import 'settings_providers.dart';
 
 enum DraftFilter {
   all,
@@ -47,6 +49,7 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
 
   Future<void> delete(String id) async {
     final store = ref.read(draftStoreProvider);
+    await NotificationService.instance.cancelDraftNotification(id);
     await store.deleteDraft(id);
     await refresh();
   }
@@ -54,11 +57,13 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
   Future<void> save(Draft draft) async {
     final store = ref.read(draftStoreProvider);
     await store.saveDraft(draft);
+    await _syncNotificationForDraft(draft);
     await refresh();
   }
 
   Future<void> clearAll() async {
     final store = ref.read(draftStoreProvider);
+    await NotificationService.instance.cancelAll();
     await store.clearAllDrafts();
     await refresh();
   }
@@ -87,6 +92,7 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
       xTaggedUsernames: draft.xTaggedUsernames,
     );
     await store.saveDraft(updated);
+    await _syncNotificationForDraft(updated);
     await refresh();
   }
 
@@ -100,6 +106,41 @@ class DraftListNotifier extends AsyncNotifier<List<Draft>> {
 
   Future<void> markFailed(Draft draft) async {
     await updateStatus(draft, 'failed');
+  }
+
+  Future<void> syncNotificationsForAll({required bool enabled}) async {
+    if (!enabled) {
+      await NotificationService.instance.cancelAll();
+      return;
+    }
+    final store = ref.read(draftStoreProvider);
+    final drafts = await store.loadDrafts();
+    for (final draft in drafts) {
+      if (draft.status == 'scheduled') {
+        await NotificationService.instance.scheduleDraftNotification(draft);
+      } else {
+        await NotificationService.instance.cancelDraftNotification(draft.id);
+      }
+    }
+  }
+
+  Future<bool> _notificationsEnabled() async {
+    final settings = ref.read(settingsProvider);
+    if (settings.hasValue) {
+      return settings.value!.notificationsEnabled;
+    }
+    final store = ref.read(settingsStoreProvider);
+    final loaded = await store.loadSettings();
+    return loaded.notificationsEnabled;
+  }
+
+  Future<void> _syncNotificationForDraft(Draft draft) async {
+    final enabled = await _notificationsEnabled();
+    if (draft.status == 'scheduled' && enabled) {
+      await NotificationService.instance.scheduleDraftNotification(draft);
+    } else {
+      await NotificationService.instance.cancelDraftNotification(draft.id);
+    }
   }
 }
 
