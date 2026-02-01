@@ -29,6 +29,11 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
     final current = _currentSettings();
     await save(current.copyWith(defaultHashtags: hashtags, defaultTemplate: template));
   }
+
+  Future<void> updateTemplate(String template) async {
+    final current = _currentSettings();
+    await save(current.copyWith(defaultTemplate: template));
+  }
 }
 
 final settingsProvider = AsyncNotifierProvider<SettingsNotifier, AppSettings>(SettingsNotifier.new);

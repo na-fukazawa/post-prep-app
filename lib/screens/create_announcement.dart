@@ -7,10 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../providers/draft_providers.dart';
+import '../providers/format_providers.dart';
 import '../providers/settings_providers.dart';
-import '../services/caption_builder.dart';
 import '../services/draft_store.dart';
-import '../services/settings_store.dart';
 
 class CreateAnnouncementScreen extends ConsumerStatefulWidget {
   final Draft? draft;
@@ -38,14 +37,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _rawController;
   late TextEditingController _titleController;
-  late TextEditingController _captionInstagramController;
-  late TextEditingController _captionXController;
-  late TextEditingController _hashtagsController;
-  late TextEditingController _eventDateController;
-  late TextEditingController _venueController;
-  late TextEditingController _performersController;
-  late TextEditingController _ticketPriceController;
-  late TextEditingController _ticketUrlController;
+  late TextEditingController _captionController;
   late TextEditingController _imageUrlsController;
   DateTime? _publishAt;
   bool _targetX = true;
@@ -54,8 +46,6 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   String? _publishAtError;
   String? _targetsError;
   String? _captionError;
-  int _captionTabIndex = 0;
-  bool _didApplyDefaults = false;
   final List<AssetEntity> _selectedAssets = [];
   final Map<String, String> _assetPathMap = {};
 
@@ -67,20 +57,14 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     final generated = draft?.generated ?? '';
     _rawController = TextEditingController(text: initialRaw);
     _titleController = TextEditingController(
-      text: draft?.title.isNotEmpty == true ? draft?.title : _extractTitle(initialRaw, generated),
+      text: draft?.title ?? '',
     );
-    _captionInstagramController = TextEditingController(
-      text: draft?.captionInstagram ?? generated,
-    );
-    _captionXController = TextEditingController(
-      text: draft?.captionX ?? generated,
-    );
-    _hashtagsController = TextEditingController(text: draft?.hashtags ?? '');
-    _eventDateController = TextEditingController(text: draft?.eventDate ?? '');
-    _venueController = TextEditingController(text: draft?.venue ?? '');
-    _performersController = TextEditingController(text: draft?.performers ?? '');
-    _ticketPriceController = TextEditingController(text: draft?.ticketPrice ?? '');
-    _ticketUrlController = TextEditingController(text: draft?.ticketUrl ?? '');
+    final captionInstagram = draft?.captionInstagram ?? '';
+    final captionX = draft?.captionX ?? '';
+    final initialCaption = captionInstagram.trim().isNotEmpty
+        ? captionInstagram
+        : (captionX.trim().isNotEmpty ? captionX : generated);
+    _captionController = TextEditingController(text: initialCaption);
     _imageUrlsController = TextEditingController(text: (draft?.imageUrls ?? []).join('\n'));
     _publishAt = draft != null ? DateTime.fromMillisecondsSinceEpoch(draft.publishAt) : null;
     if (draft?.targets.isNotEmpty == true) {
@@ -88,47 +72,97 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       _targetX = normalized.contains('x') || normalized.contains('twitter');
       _targetInstagram = normalized.contains('instagram');
     }
-    if (draft != null) {
-      _didApplyDefaults = true;
-    }
   }
 
   @override
   void dispose() {
     _rawController.dispose();
     _titleController.dispose();
-    _captionInstagramController.dispose();
-    _captionXController.dispose();
-    _hashtagsController.dispose();
-    _eventDateController.dispose();
-    _venueController.dispose();
-    _performersController.dispose();
-    _ticketPriceController.dispose();
-    _ticketUrlController.dispose();
+    _captionController.dispose();
     _imageUrlsController.dispose();
     super.dispose();
   }
 
   Future<void> _generateFromRaw() async {
+    if (_isGenerating) return;
     setState(() => _isGenerating = true);
     final raw = _rawController.text.trim();
-    final out = CaptionBuilder.buildCaption(raw);
+    if (raw.isEmpty) {
+      setState(() => _isGenerating = false);
+      return;
+    }
+
+    final settings = ref.read(settingsProvider).value;
+    final template = settings?.defaultTemplate.trim() ?? '';
+    final title = _titleController.text.trim();
+
+    Object? formatError;
+    final formatService = ref.read(liveFormatServiceProvider);
+    String formatted;
+    try {
+      formatted = await formatService.format(
+        text: raw,
+        title: title,
+        template: template,
+      );
+    } catch (error) {
+      formatError = error;
+      formatted = _buildFallbackFormatted(
+        raw: raw,
+        title: title,
+        template: template,
+      );
+    }
+
+    if (!mounted) return;
     setState(() {
-      _captionInstagramController.text = out;
-      _captionXController.text = out;
-      if (_titleController.text.trim().isEmpty) {
-        _titleController.text = _extractTitle(raw, out);
-      }
+      _captionController.text = formatted;
       _isGenerating = false;
     });
+
+    if (formatError != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('AI整形に失敗しました。テンプレートのみ反映しました。')),
+      );
+    }
+  }
+
+  String _buildFallbackFormatted({
+    required String raw,
+    required String title,
+    required String template,
+  }) {
+    final trimmedRaw = raw.trim();
+    final trimmedTitle = title.trim();
+    final trimmedTemplate = template.trim();
+    if (trimmedTemplate.isEmpty) {
+      if (trimmedTitle.isEmpty) return trimmedRaw;
+      if (trimmedRaw.isEmpty) return trimmedTitle;
+      return '$trimmedTitle\n\n$trimmedRaw';
+    }
+
+    var output = trimmedTemplate;
+    output = output.replaceAll('{{title}}', trimmedTitle);
+    output = output.replaceAll('{title}', trimmedTitle);
+    output = output.replaceAll('{{body}}', trimmedRaw);
+    output = output.replaceAll('{body}', trimmedRaw);
+
+    final hasTitleToken = trimmedTemplate.contains('{title}') || trimmedTemplate.contains('{{title}}');
+    final hasBodyToken = trimmedTemplate.contains('{body}') || trimmedTemplate.contains('{{body}}');
+    if (hasTitleToken || hasBodyToken) {
+      return output.trim();
+    }
+
+    final fallbackBody = trimmedTitle.isEmpty ? trimmedRaw : '$trimmedTitle\n\n$trimmedRaw';
+    if (fallbackBody.isEmpty) return output.trim();
+    return '$output\n\n$fallbackBody'.trim();
   }
 
   Future<void> _save(String status) async {
     if (!_validateRequired(status)) return;
     final now = DateTime.now();
-    final captionInstagram = _captionInstagramController.text.trim();
-    final captionX = _captionXController.text.trim();
-    final generated = captionInstagram.isNotEmpty ? captionInstagram : captionX;
+    final caption = _captionController.text.trim();
+    final generated = caption;
     final draft = Draft(
       id: widget.draft?.id ?? now.millisecondsSinceEpoch.toString(),
       rawText: _rawController.text.trim(),
@@ -138,14 +172,14 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       title: _titleController.text.trim(),
       publishAt: _publishAt?.millisecondsSinceEpoch ?? widget.draft?.publishAt ?? now.millisecondsSinceEpoch,
       targets: _selectedTargets(),
-      captionInstagram: captionInstagram,
-      captionX: captionX,
-      hashtags: _hashtagsController.text.trim(),
-      eventDate: _eventDateController.text.trim(),
-      venue: _venueController.text.trim(),
-      performers: _performersController.text.trim(),
-      ticketPrice: _ticketPriceController.text.trim(),
-      ticketUrl: _ticketUrlController.text.trim(),
+      captionInstagram: caption,
+      captionX: caption,
+      hashtags: '',
+      eventDate: '',
+      venue: '',
+      performers: '',
+      ticketPrice: '',
+      ticketUrl: '',
       imageUrls: _parseImageUrls(_imageUrlsController.text),
       xTaggedUserIds: widget.draft?.xTaggedUserIds,
       xTaggedUsernames: widget.draft?.xTaggedUsernames,
@@ -293,18 +327,12 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
       }
 
       _captionError = null;
-      final captionInstagram = _captionInstagramController.text.trim();
-      final captionX = _captionXController.text.trim();
-      if (_targetInstagram && captionInstagram.isEmpty) {
-        _captionError = 'Instagramの本文は必須です。';
+      final caption = _captionController.text.trim();
+      if ((_targetInstagram || _targetX) && caption.isEmpty) {
+        _captionError = '本文は必須です。';
         valid = false;
       }
-      if (_targetX && captionX.isEmpty) {
-        _captionError ??= 'Xの本文は必須です。';
-        valid = false;
-      }
-      final captionXCombined = _composeWithHashtags(captionX);
-      if (_targetX && _countXCharacters(captionXCombined) > xCharacterLimit) {
+      if (_targetX && _countXCharacters(caption) > xCharacterLimit) {
         _captionError = 'Xの文字数は$xCharacterLimit文字以内にしてください。';
         valid = false;
       }
@@ -326,12 +354,6 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     if (_targetX) targets.add('x');
     if (_targetInstagram) targets.add('instagram');
     return targets;
-  }
-
-  String _extractTitle(String raw, String generated) {
-    final source = raw.trim().isNotEmpty ? raw : generated;
-    final firstLine = source.split(RegExp(r'\r?\n')).first.trim();
-    return firstLine.isEmpty ? '無題の告知' : firstLine;
   }
 
   String _formatDate(DateTime date) {
@@ -392,10 +414,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.draft != null;
-    final settings = ref.watch(settingsProvider).value;
-    if (settings != null && widget.draft == null) {
-      _applyDefaultsIfNeeded(settings);
-    }
+    ref.watch(settingsProvider);
 
     return Scaffold(
       backgroundColor: backgroundDark,
@@ -406,7 +425,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
         foregroundColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         title: Text(
-          isEditing ? '告知編集' : '新規作成 (スマート抽出)',
+          isEditing ? '告知編集' : '新規作成 (AI整形)',
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -439,96 +458,20 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
               validator: (value) => (value ?? '').trim().isEmpty ? 'タイトルは必須です。' : null,
             ),
             const SizedBox(height: 18),
-            _sectionTitle('イベント詳細'),
-            _card(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _eventDateController,
-                    style: const TextStyle(color: Colors.white),
-                    keyboardAppearance: Brightness.dark,
-                    decoration: _inputDecoration('イベント日時 例: 2024/02/01 19:00'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _venueController,
-                    style: const TextStyle(color: Colors.white),
-                    keyboardAppearance: Brightness.dark,
-                    decoration: _inputDecoration('会場'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _performersController,
-                    style: const TextStyle(color: Colors.white),
-                    keyboardAppearance: Brightness.dark,
-                    decoration: _inputDecoration('出演者'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            _sectionTitle('チケット情報'),
-            _card(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _ticketPriceController,
-                    style: const TextStyle(color: Colors.white),
-                    keyboardAppearance: Brightness.dark,
-                    decoration: _inputDecoration('料金 例: 3,000円'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _ticketUrlController,
-                    style: const TextStyle(color: Colors.white),
-                    keyboardAppearance: Brightness.dark,
-                    keyboardType: TextInputType.url,
-                    decoration: _inputDecoration('チケットURL'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
             _sectionTitle('投稿本文'),
             _card(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      ChoiceChip(
-                        avatar: _platformAvatar(instagramIconAsset),
-                        label: const Text('Instagram'),
-                        selected: _captionTabIndex == 0,
-                        onSelected: (_) => setState(() => _captionTabIndex = 0),
-                        selectedColor: primary,
-                        labelStyle: TextStyle(color: _captionTabIndex == 0 ? Colors.black : Colors.white),
-                        backgroundColor: inputDark,
-                      ),
-                      ChoiceChip(
-                        avatar: _platformAvatar(xIconAsset),
-                        label: const Text('X'),
-                        selected: _captionTabIndex == 1,
-                        onSelected: (_) => setState(() => _captionTabIndex = 1),
-                        selectedColor: primary,
-                        labelStyle: TextStyle(color: _captionTabIndex == 1 ? Colors.black : Colors.white),
-                        backgroundColor: inputDark,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
                   TextFormField(
-                    controller: _captionTabIndex == 0 ? _captionInstagramController : _captionXController,
+                    controller: _captionController,
                     maxLines: 6,
                     style: const TextStyle(color: Colors.white),
                     keyboardAppearance: Brightness.dark,
                     decoration: _inputDecoration('投稿用キャプション'),
                     onChanged: (_) => setState(() {}),
                   ),
-                  if (_captionTabIndex == 1) ...[
+                  if (_targetX) ...[
                     const SizedBox(height: 6),
                     _buildXCount(),
                   ],
@@ -537,16 +480,6 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                     Text(_captionError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
                   ],
                 ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            _sectionTitle('ハッシュタグ'),
-            _card(
-              child: TextField(
-                controller: _hashtagsController,
-                style: const TextStyle(color: Colors.white),
-                keyboardAppearance: Brightness.dark,
-                decoration: _inputDecoration('#イベント #ライブ'),
               ),
             ),
             const SizedBox(height: 18),
@@ -658,27 +591,6 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
         ),
       ),
     );
-  }
-
-  void _applyDefaultsIfNeeded(AppSettings settings) {
-    if (_didApplyDefaults) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _didApplyDefaults) return;
-      final hashtags = settings.defaultHashtags.trim();
-      final template = settings.defaultTemplate.trim();
-      if (_hashtagsController.text.trim().isEmpty && hashtags.isNotEmpty) {
-        _hashtagsController.text = hashtags;
-      }
-      if (template.isNotEmpty) {
-        if (_captionInstagramController.text.trim().isEmpty) {
-          _captionInstagramController.text = template;
-        }
-        if (_captionXController.text.trim().isEmpty) {
-          _captionXController.text = template;
-        }
-      }
-      _didApplyDefaults = true;
-    });
   }
 
   void _openImageUrlSheet() {
@@ -837,7 +749,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  '主催者から届いたメールや告知文をそのまま貼り付けるだけで、ライブ名や会場などの情報を自動で抽出します。',
+                  '主催者から届いたメールや告知文をそのまま貼り付けるだけで、指定したフォーマットにAIが整形します。',
                   style: TextStyle(fontSize: 11, color: mutedText, height: 1.4),
                 ),
                 const SizedBox(height: 12),
@@ -854,7 +766,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
                   child: ElevatedButton.icon(
                     onPressed: _isGenerating ? null : _generateFromRaw,
                     icon: const Icon(Icons.auto_awesome),
-                    label: Text(_isGenerating ? '生成中...' : '情報を抽出して下書き作成'),
+                    label: Text(_isGenerating ? '整形中...' : 'AIで整形して本文作成'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -954,7 +866,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   }
 
   Widget _buildXCount() {
-    final count = _countXCharacters(_composeWithHashtags(_captionXController.text));
+    final count = _countXCharacters(_captionController.text);
     final over = count > xCharacterLimit;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1124,14 +1036,6 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     final uri = Uri.tryParse(value);
     if (uri == null) return false;
     return uri.scheme == 'http' || uri.scheme == 'https';
-  }
-
-  String _composeWithHashtags(String base) {
-    final tags = _hashtagsController.text.trim();
-    final normalized = base.trim();
-    if (tags.isEmpty) return normalized;
-    if (normalized.isEmpty) return tags;
-    return '$normalized\n$tags';
   }
 
   int _countXCharacters(String text) {

@@ -24,14 +24,12 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
 
   static const String appVersion = '0.0.1';
 
-  late TextEditingController _hashtagsController;
   late TextEditingController _templateController;
   bool _didInit = false;
 
   @override
   void initState() {
     super.initState();
-    _hashtagsController = TextEditingController();
     _templateController = TextEditingController();
     if (XFeatureFlags.enableDirectPost) {
       Future.microtask(() => ref.read(xAuthProvider.notifier).init());
@@ -40,7 +38,6 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
 
   @override
   void dispose() {
-    _hashtagsController.dispose();
     _templateController.dispose();
     super.dispose();
   }
@@ -78,7 +75,6 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
           child: settingsAsync.when(
             data: (settings) {
               if (!_didInit) {
-                _hashtagsController.text = settings.defaultHashtags;
                 _templateController.text = settings.defaultTemplate;
                 _didInit = true;
               }
@@ -128,36 +124,22 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        _sectionTitle('投稿デフォルト設定'),
+        _sectionTitle('整形テンプレート'),
         _card(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('デフォルトハッシュタグ', style: TextStyle(color: mutedText)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _hashtagsController,
-                style: const TextStyle(color: Colors.white),
-                keyboardAppearance: Brightness.dark,
-                decoration: _inputDecoration('例: #ライブ #イベント'),
+              const Text(
+                'AIがこの形式に合わせて整形します（{title} / {body} で差し込み可）',
+                style: TextStyle(color: mutedText),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        _sectionTitle('定型文テンプレート'),
-        _card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('本文の初期テンプレート', style: TextStyle(color: mutedText)),
               const SizedBox(height: 8),
               TextField(
                 controller: _templateController,
                 maxLines: 4,
                 style: const TextStyle(color: Colors.white),
                 keyboardAppearance: Brightness.dark,
-                decoration: _inputDecoration('例: 本日開催です！ぜひお越しください。'),
+                decoration: _inputDecoration('例: 【📣LIVE INFO📣】\n{title}\n\n{body}'),
               ),
             ],
           ),
@@ -166,7 +148,7 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => _saveDefaults(settings),
+            onPressed: _saveTemplate,
             style: ElevatedButton.styleFrom(
               backgroundColor: primary,
               foregroundColor: Colors.black,
@@ -350,13 +332,9 @@ class _AppSettingScreenState extends ConsumerState<AppSettingScreen> {
     );
   }
 
-  Future<void> _saveDefaults(AppSettings settings) async {
-    final hashtags = _hashtagsController.text.trim();
+  Future<void> _saveTemplate() async {
     final template = _templateController.text.trim();
-    await ref.read(settingsProvider.notifier).updateDefaults(
-          hashtags: hashtags,
-          template: template,
-        );
+    await ref.read(settingsProvider.notifier).updateTemplate(template);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('保存しました')));
   }
