@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/draft_providers.dart';
 import '../providers/x_auth_providers.dart';
 import '../services/draft_store.dart';
@@ -22,7 +24,8 @@ class PostPreparerationScreen extends ConsumerStatefulWidget {
   ConsumerState<PostPreparerationScreen> createState() => _PostPreparerationScreenState();
 }
 
-class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScreen> {
+class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScreen>
+    with WidgetsBindingObserver {
   static const Color primary = Color(0xFF00FFCC);
   static const Color backgroundDark = Color(0xFF0E121A);
   static const Color surfaceDark = Color(0xFF161B26);
@@ -31,6 +34,12 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
   static const Color subduedText = Color(0xFF7C8595);
   static const String instagramIconAsset = 'assets/icons/instagram.jpg';
   static const String xIconAsset = 'assets/icons/x.jpg';
+  static const MethodChannel _xShareChannel = MethodChannel('post_prep_app/x_share');
+
+  bool _awaitingXReturn = false;
+  bool _pendingDeletePrompt = false;
+  bool _isShowingDeletePrompt = false;
+  List<String> _lastSavedAssetIds = <String>[];
 
   late final PageController _pageController;
   int _currentImageIndex = 0;
@@ -45,6 +54,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pageController = PageController();
     if (XFeatureFlags.enableDirectPost) {
       Future.microtask(() => ref.read(xAuthProvider.notifier).init());
@@ -53,8 +63,17 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (!_awaitingXReturn || !_pendingDeletePrompt) return;
+    _awaitingXReturn = false;
+    _showDeletePromptIfNeeded();
   }
 
   @override
@@ -125,7 +144,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
                           actionLabel: xActionLabel,
                           onSharePressed: XFeatureFlags.enableDirectPost
                               ? () => _openXComposer(context, ref, draft, captionX)
-                              : () => _shareText(context, ref, draft, captionX),
+                              : () => _shareToXApp(context, ref, draft, captionX),
                         ),
                       ],
                       if (showIg) ...[
@@ -620,8 +639,18 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
 
   Future<void> _shareText(BuildContext context, WidgetRef ref, Draft draft, String text) async {
     if (text.isEmpty && draft.imageUrls.isEmpty) return;
+    final shareFiles = await _prepareShareFiles(draft.imageUrls);
+    await _shareTextWithFiles(context, ref, draft, text, shareFiles);
+  }
+
+  Future<void> _shareTextWithFiles(
+    BuildContext context,
+    WidgetRef ref,
+    Draft draft,
+    String text,
+    List<XFile> shareFiles,
+  ) async {
     try {
-      final shareFiles = await _prepareShareFiles(draft.imageUrls);
       if (shareFiles.isNotEmpty) {
         await Share.shareXFiles(
           shareFiles,
@@ -636,6 +665,142 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
       await ref.read(draftListProvider.notifier).markFailed(draft);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('共有に失敗しました')));
+    }
+  }
+
+  Future<void> _shareToXApp(BuildContext context, WidgetRef ref, Draft draft, String text) async {
+    if (text.isEmpty && draft.imageUrls.isEmpty) return;
+    final shareFiles = await _prepareShareFiles(draft.imageUrls);
+    try {
+      if (Platform.isAndroid) {
+        final opened = await _shareToXOnAndroid(text, shareFiles);
+        if (opened) return;
+      } else if (Platform.isIOS) {
+        final savedIds = await _saveImagesToPhotoLibrary(shareFiles);
+        _lastSavedAssetIds = savedIds;
+        _pendingDeletePrompt = savedIds.isNotEmpty;
+        if (context.mounted && shareFiles.isNotEmpty) {
+          final message = savedIds.isNotEmpty
+              ? '画像を写真に保存しました。Xアプリで選択してタグ付けしてください。'
+              : '写真への保存が許可されていないため、Xアプリで画像を追加してください。';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        }
+        final opened = await _openXIntent(text);
+        if (opened) {
+          _awaitingXReturn = _pendingDeletePrompt;
+          return;
+        }
+        if (_pendingDeletePrompt) {
+          _showDeletePromptIfNeeded();
+        }
+      }
+      await _shareTextWithFiles(context, ref, draft, text, shareFiles);
+    } catch (_) {
+      await ref.read(draftListProvider.notifier).markFailed(draft);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('共有に失敗しました')));
+    }
+  }
+
+  Future<bool> _shareToXOnAndroid(String text, List<XFile> files) async {
+    try {
+      final result = await _xShareChannel.invokeMethod<bool>(
+        'shareToX',
+        {
+          'text': text,
+          'imagePaths': files.map((file) => file.path).toList(),
+        },
+      );
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<String>> _saveImagesToPhotoLibrary(List<XFile> files) async {
+    if (files.isEmpty) return <String>[];
+    final state = await PhotoManager.requestPermissionExtend(
+      requestOption: const PermissionRequestOption(
+        iosAccessLevel: IosAccessLevel.addOnly,
+        androidPermission: AndroidPermission(
+          type: RequestType.image,
+          mediaLocation: false,
+        ),
+      ),
+    );
+    if (!state.hasAccess) return <String>[];
+    final savedIds = <String>[];
+    for (final file in files) {
+      try {
+        final entity = await PhotoManager.editor.saveImageWithPath(
+          file.path,
+          creationDate: DateTime.now(),
+        );
+        savedIds.add(entity.id);
+      } catch (_) {
+        // Ignore per-file failures to save.
+      }
+    }
+    return savedIds;
+  }
+
+  Future<bool> _openXIntent(String text) async {
+    final uri = Uri.parse('https://twitter.com/intent/tweet').replace(
+      queryParameters: text.isEmpty ? null : {'text': text},
+    );
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _showDeletePromptIfNeeded() async {
+    if (_isShowingDeletePrompt || _lastSavedAssetIds.isEmpty || !mounted) return;
+    _isShowingDeletePrompt = true;
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('保存した画像を削除しますか？'),
+          content: const Text('X投稿に使った画像を写真アプリから削除します。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('削除しない'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('削除する'),
+            ),
+          ],
+        );
+      },
+    );
+    _isShowingDeletePrompt = false;
+    if (!mounted) return;
+    if (shouldDelete == true) {
+      await _deleteSavedImages();
+    }
+    _pendingDeletePrompt = false;
+    _lastSavedAssetIds = <String>[];
+  }
+
+  Future<void> _deleteSavedImages() async {
+    final state = await PhotoManager.requestPermissionExtend(
+      requestOption: const PermissionRequestOption(
+        iosAccessLevel: IosAccessLevel.readWrite,
+        androidPermission: AndroidPermission(
+          type: RequestType.image,
+          mediaLocation: false,
+        ),
+      ),
+    );
+    if (!state.hasAccess || _lastSavedAssetIds.isEmpty) return;
+    try {
+      final deleted = await PhotoManager.editor.deleteWithIds(_lastSavedAssetIds);
+      if (!mounted) return;
+      final message = deleted.isNotEmpty ? '保存した画像を削除しました' : '削除できる画像がありませんでした';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('画像の削除に失敗しました')));
     }
   }
 
