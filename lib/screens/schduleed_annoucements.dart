@@ -17,6 +17,7 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
   static const Color chipBorder = Color(0xFF2A3240);
   static const Color mutedText = Color(0xFF9AA3B2);
   static const Color subduedText = Color(0xFF7C8595);
+  static const double deleteActionWidth = 92;
   static const String instagramIconAsset = 'assets/icons/instagram.jpg';
   static const String xIconAsset = 'assets/icons/x.jpg';
 
@@ -238,7 +239,7 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
     );
   }
 
- // 告知カードのウィジェット
+  // 告知カードのウィジェット
   Widget _announcementCard(
     BuildContext context,
     WidgetRef ref, {
@@ -260,121 +261,202 @@ class SchduleedAnnoucementsScreen extends ConsumerWidget {
         ? const Color(0xFF7D2B2B)
         : chipBorder;
 
-    // タップで編集画面を開く
-    return InkWell(
-      onTap: () => _openDetail(context, ref, draft.id),
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: surfaceDark,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 12),
+    // タップで編集画面を開く + 左スワイプで削除マークを固定表示
+    final card = Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surfaceDark,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildThumbnail(
+                  isFailed: isFailed,
+                  imageUrl: imageUrl,
+                  platforms: platforms,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.more_horiz,
+                            size: 20,
+                            color: Colors.white54,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isFailed ? Colors.red.shade300 : mutedText,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      if (isFailed)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFB02929),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => ref.read(draftListProvider.notifier).markScheduled(draft),
+                            child: const Text('再試行', style: TextStyle(color: Colors.white)),
+                          ),
+                        )
+                      else
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildStatusBadge(
+                              isScheduled: isScheduled,
+                              isDraft: isDraft,
+                              isPosted: isPosted,
+                              timeLabel: timeLabel,
+                              shortDateLabel: shortDateLabel,
+                            ),
+                            if (!isDraft)
+                              Row(
+                                children: [
+                                  Icon(Icons.schedule, size: 14, color: subduedText),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    timeLabel,
+                                    style: const TextStyle(fontSize: 11, color: subduedText),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Stack(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildThumbnail(
-                    isFailed: isFailed,
-                    imageUrl: imageUrl,
-                    platforms: platforms,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  height: 1.2,
-                                ),
-                              ),
-                            ),
-                            Icon(
-                              Icons.more_horiz,
-                              size: 20,
-                              color: Colors.white54,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isFailed ? Colors.red.shade300 : mutedText,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        if (isFailed)
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFB02929),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () => ref.read(draftListProvider.notifier).markScheduled(draft),
-                              child: const Text('再試行', style: TextStyle(color: Colors.white)),
-                            ),
-                          )
-                        else
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildStatusBadge(
-                                isScheduled: isScheduled,
-                                isDraft: isDraft,
-                                isPosted: isPosted,
-                                timeLabel: timeLabel,
-                                shortDateLabel: shortDateLabel,
-                              ),
-                              if (!isDraft)
-                                Row(
-                                  children: [
-                                    Icon(Icons.schedule, size: 14, color: subduedText),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      timeLabel,
-                                      style: const TextStyle(fontSize: 11, color: subduedText),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                      ],
-                    ),
+      ),
+    );
+
+    return _SwipeRevealCard(
+      key: ValueKey('draft-${draft.id}'),
+      borderRadius: BorderRadius.circular(22),
+      actionWidth: deleteActionWidth,
+      backgroundBuilder: (close) => _buildDeleteBackground(
+        width: deleteActionWidth,
+        onTap: () async {
+          final ok = await _confirmDelete(context, draft);
+          if (!ok) {
+            close();
+            return;
+          }
+          await _deleteDraft(context, ref, draft);
+        },
+      ),
+      onTap: () => _openDetail(context, ref, draft.id),
+      child: card,
+    );
+  }
+
+  Widget _buildDeleteBackground({required VoidCallback onTap, required double width}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        alignment: Alignment.centerRight,
+        color: const Color(0xFF7D2B2B),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: width,
+            height: double.infinity,
+            child: InkWell(
+              onTap: onTap,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  _DeleteIcon(),
+                  SizedBox(width: 10),
+                  Text(
+                    '削除',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Future<bool> _confirmDelete(BuildContext context, Draft draft) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: surfaceDark,
+          title: const Text('告知を削除しますか？', style: TextStyle(color: Colors.white)),
+          content: Text(
+            'この操作は元に戻せません。',
+            style: TextStyle(color: mutedText),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('キャンセル', style: TextStyle(color: mutedText)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('削除', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Future<void> _deleteDraft(BuildContext context, WidgetRef ref, Draft draft) async {
+    await ref.read(draftListProvider.notifier).delete(draft.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('告知を削除しました')),
     );
   }
 
@@ -653,4 +735,118 @@ class _Section {
 
   final String title;
   final List<Draft> items;
+}
+
+class _SwipeRevealCard extends StatefulWidget {
+  const _SwipeRevealCard({
+    super.key,
+    required this.child,
+    required this.backgroundBuilder,
+    required this.onTap,
+    required this.borderRadius,
+    required this.actionWidth,
+  });
+
+  final Widget child;
+  final Widget Function(VoidCallback close) backgroundBuilder;
+  final VoidCallback onTap;
+  final BorderRadius borderRadius;
+  final double actionWidth;
+
+  @override
+  State<_SwipeRevealCard> createState() => _SwipeRevealCardState();
+}
+
+class _SwipeRevealCardState extends State<_SwipeRevealCard> {
+  double _offset = 0;
+  bool _dragging = false;
+
+  void _setOffset(double value) {
+    final clamped = value.clamp(-widget.actionWidth, 0.0);
+    if (clamped == _offset) return;
+    setState(() => _offset = clamped);
+  }
+
+  void _handleDragStart(DragStartDetails details) {
+    setState(() => _dragging = true);
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    final delta = details.primaryDelta;
+    if (delta == null) return;
+    _setOffset(_offset + delta);
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    setState(() => _dragging = false);
+    final shouldOpen = _offset.abs() >= widget.actionWidth * 0.5;
+    _setOffset(shouldOpen ? -widget.actionWidth : 0);
+  }
+
+  void _handleDragCancel() {
+    setState(() => _dragging = false);
+    final shouldOpen = _offset.abs() >= widget.actionWidth * 0.5;
+    _setOffset(shouldOpen ? -widget.actionWidth : 0);
+  }
+
+  void _handleTap() {
+    if (_offset != 0) {
+      _setOffset(0);
+      return;
+    }
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = _dragging ? Duration.zero : const Duration(milliseconds: 180);
+    void close() => _setOffset(0);
+    return ClipRRect(
+      borderRadius: widget.borderRadius,
+      child: Stack(
+        children: [
+          Positioned.fill(child: widget.backgroundBuilder(close)),
+          GestureDetector(
+            onHorizontalDragStart: _handleDragStart,
+            onHorizontalDragUpdate: _handleDragUpdate,
+            onHorizontalDragEnd: _handleDragEnd,
+            onHorizontalDragCancel: _handleDragCancel,
+            behavior: HitTestBehavior.translucent,
+            child: AnimatedContainer(
+              duration: duration,
+              curve: Curves.easeOut,
+              transform: Matrix4.translationValues(_offset, 0, 0),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _handleTap,
+                  borderRadius: widget.borderRadius,
+                  child: widget.child,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeleteIcon extends StatelessWidget {
+  const _DeleteIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: const Center(
+        child: Icon(Icons.delete_outline, size: 18, color: Colors.white),
+      ),
+    );
+  }
 }
