@@ -6,6 +6,7 @@
 // - データ量が多くなる用途には不向き（SharedPreferences は小さなキー/値向け）
 // - 文字列リストに JSON を格納するシンプルな構成のため、移行時はバージョン管理が必要
 import 'dart:convert';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Draft {
@@ -112,9 +113,13 @@ class DraftStore {
     // StringList を読み出して JSON をデコードし Draft に変換する。
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_key) ?? <String>[];
+    final docsDir = await getApplicationDocumentsDirectory();
+    final docsPath = docsDir.path;
     return raw.map((s) {
       final m = jsonDecode(s) as Map<String, dynamic>;
-      return Draft.fromJson(m);
+      final draft = Draft.fromJson(m);
+      draft.imageUrls = _normalizeImageUrlsForLoad(draft.imageUrls, docsPath);
+      return draft;
     }).toList()
       // 公開日時の降順にソートして最新が上に来るようにする。
       ..sort((a, b) => b.publishAt.compareTo(a.publishAt));
@@ -128,7 +133,9 @@ class DraftStore {
 
     // id が存在すれば更新、なければ追加
     final idx = decoded.indexWhere((m) => (m['id'] as String) == draft.id);
+    final docsDir = await getApplicationDocumentsDirectory();
     final encoded = draft.toJson();
+    encoded['imageUrls'] = _normalizeImageUrlsForSave(draft.imageUrls, docsDir.path);
     if (idx >= 0) {
       decoded[idx] = encoded;
     } else {
@@ -153,5 +160,73 @@ class DraftStore {
   Future<void> clearAllDrafts() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
+  }
+
+  List<String> _normalizeImageUrlsForLoad(List<String> imageUrls, String docsPath) {
+    final normalized = <String>[];
+    for (final url in imageUrls) {
+      final trimmed = url.trim();
+      if (trimmed.isEmpty) continue;
+      if (_isRemoteImage(trimmed)) {
+        normalized.add(trimmed);
+        continue;
+      }
+      if (trimmed.startsWith('announcement_images/')) {
+        normalized.add(_joinDocPath(docsPath, trimmed));
+        continue;
+      }
+      if (trimmed.startsWith('/')) {
+        final index = trimmed.indexOf('/announcement_images/');
+        if (index >= 0) {
+          final relative = trimmed.substring(index + 1);
+          normalized.add(_joinDocPath(docsPath, relative));
+        } else {
+          normalized.add(trimmed);
+        }
+        continue;
+      }
+      normalized.add(_joinDocPath(docsPath, trimmed));
+    }
+    return normalized;
+  }
+
+  List<String> _normalizeImageUrlsForSave(List<String> imageUrls, String docsPath) {
+    final normalized = <String>[];
+    final docsPrefix = docsPath.endsWith('/') ? docsPath : '$docsPath/';
+    for (final url in imageUrls) {
+      final trimmed = url.trim();
+      if (trimmed.isEmpty) continue;
+      if (_isRemoteImage(trimmed)) {
+        normalized.add(trimmed);
+        continue;
+      }
+      if (trimmed.startsWith(docsPrefix)) {
+        normalized.add(trimmed.substring(docsPrefix.length));
+        continue;
+      }
+      if (trimmed.startsWith('/')) {
+        final index = trimmed.indexOf('/announcement_images/');
+        if (index >= 0) {
+          normalized.add(trimmed.substring(index + 1));
+        } else {
+          normalized.add(trimmed);
+        }
+        continue;
+      }
+      normalized.add(trimmed);
+    }
+    return normalized;
+  }
+
+  bool _isRemoteImage(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null) return false;
+    return uri.scheme == 'http' || uri.scheme == 'https';
+  }
+
+  String _joinDocPath(String docsPath, String relativePath) {
+    final cleaned = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+    if (docsPath.endsWith('/')) return '$docsPath$cleaned';
+    return '$docsPath/$cleaned';
   }
 }

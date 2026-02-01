@@ -268,6 +268,7 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
           .toList();
 
       final savedPaths = <String>[];
+      var failedCount = 0;
       for (final asset in picked) {
         final assetId = asset.id;
         var savedPath = _assetPathMap[assetId];
@@ -279,6 +280,8 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
         }
         if (savedPath != null && savedPath.isNotEmpty) {
           savedPaths.add(savedPath);
+        } else {
+          failedCount += 1;
         }
       }
 
@@ -287,6 +290,11 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
         ..addAll(picked);
       _imageUrlsController.text = [...remoteUrls, ...preservedLocal, ...savedPaths].join('\n');
       if (mounted) setState(() {});
+      if (failedCount > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('一部の画像を保存できませんでした。別の写真でお試しください。')),
+        );
+      }
     } on PlatformException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -334,30 +342,59 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
   }
 
   Future<String> _persistAsset(AssetEntity asset) async {
-    final originalFile = await asset.originFile ?? await asset.file;
-    if (originalFile == null) return '';
-    final originalPath = originalFile.path;
     try {
       final root = await getApplicationDocumentsDirectory();
       final imagesDir = Directory('${root.path}/announcement_images');
       if (!await imagesDir.exists()) {
         await imagesDir.create(recursive: true);
       }
-      final ext = _fileExtension(originalPath);
       final stamp = DateTime.now().millisecondsSinceEpoch;
       final suffix = math.Random().nextInt(10000).toString().padLeft(4, '0');
+      final originalFile = await asset.originFile ?? await asset.file;
+      final fileExt = _fileExtension(originalFile?.path ?? '');
+      final titleExt = _fileExtension(asset.title ?? '');
+      final mimeExt = _extensionFromMimeType(asset.mimeType);
+      final ext = fileExt.isNotEmpty
+          ? fileExt
+          : (titleExt.isNotEmpty ? titleExt : (mimeExt.isNotEmpty ? mimeExt : '.jpg'));
       final filename = 'flyer_${stamp}_$suffix$ext';
-      final saved = await originalFile.copy('${imagesDir.path}/$filename');
-      return saved.path;
+      final targetPath = '${imagesDir.path}/$filename';
+      if (originalFile != null) {
+        try {
+          final saved = await originalFile.copy(targetPath);
+          return saved.path;
+        } catch (_) {
+          // Fall through to bytes copy.
+        }
+      }
+      final bytes = await asset.originBytes;
+      if (bytes != null && bytes.isNotEmpty) {
+        final file = File(targetPath);
+        await file.writeAsBytes(bytes, flush: true);
+        return file.path;
+      }
     } catch (_) {
-      return originalPath;
+      return '';
     }
+    return '';
   }
 
   String _fileExtension(String path) {
     final dot = path.lastIndexOf('.');
     if (dot <= 0 || dot == path.length - 1) return '';
     return path.substring(dot);
+  }
+
+  String _extensionFromMimeType(String? mimeType) {
+    if (mimeType == null || mimeType.isEmpty) return '';
+    final lower = mimeType.toLowerCase();
+    if (lower.contains('jpeg') || lower.contains('jpg')) return '.jpg';
+    if (lower.contains('png')) return '.png';
+    if (lower.contains('heic')) return '.heic';
+    if (lower.contains('heif')) return '.heif';
+    if (lower.contains('webp')) return '.webp';
+    if (lower.contains('gif')) return '.gif';
+    return '';
   }
 
   void _clearImages() {
