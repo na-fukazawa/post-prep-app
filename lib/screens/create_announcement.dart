@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -457,57 +458,240 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
     return targets;
   }
 
-  String _formatDate(DateTime date) {
-    final year = date.year.toString();
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year/$month/$day';
+  String _weekdayLabel(DateTime date) {
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    return weekdays[date.weekday % 7];
   }
 
-  String _formatTime(DateTime date) {
+  String _formatPickerDate(DateTime date) {
+    final month = date.month.toString();
+    final day = date.day.toString();
+    final weekday = _weekdayLabel(date);
+    return '$month月 $day日 $weekday';
+  }
+
+  String _formatPublishAt(DateTime date) {
+    final month = date.month.toString();
+    final day = date.day.toString();
+    final weekday = _weekdayLabel(date);
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    return '$month月 $day日 $weekday  $hour : $minute';
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final base = _publishAt ?? now;
-    final date = await showDatePicker(
-      context: context,
-      initialDate: base,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 2),
-    );
-    if (date == null) return;
-    setState(() {
-      _publishAt = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        base.hour,
-        base.minute,
-      );
-      _publishAtError = null;
-    });
+  DateTime _clampDateTime(DateTime value, DateTime? minimum, DateTime? maximum) {
+    if (minimum != null && value.isBefore(minimum)) return minimum;
+    if (maximum != null && value.isAfter(maximum)) return maximum;
+    return value;
   }
 
-  Future<void> _pickTime() async {
+  int _dateIndexFor(DateTime value, DateTime minDate, int maxIndex) {
+    final dateOnly = DateTime(value.year, value.month, value.day);
+    var index = dateOnly.difference(minDate).inDays;
+    if (index < 0) index = 0;
+    if (index >= maxIndex) index = maxIndex - 1;
+    return index;
+  }
+
+  Future<DateTime?> _showWheelDateTimePicker({
+    required DateTime initialDateTime,
+    required DateTime minimumDate,
+    required DateTime maximumDate,
+  }) async {
+    final minDateOnly = DateTime(minimumDate.year, minimumDate.month, minimumDate.day);
+    final maxDateOnly = DateTime(maximumDate.year, maximumDate.month, maximumDate.day);
+    final dates = <DateTime>[];
+    for (var day = minDateOnly; !day.isAfter(maxDateOnly); day = day.add(const Duration(days: 1))) {
+      dates.add(day);
+    }
+
+    DateTime selected = _clampDateTime(initialDateTime, minimumDate, maximumDate);
+    int selectedDateIndex = _dateIndexFor(selected, minDateOnly, dates.length);
+    int selectedHour = selected.hour;
+    int selectedMinute = selected.minute;
+
+    final dateController = FixedExtentScrollController(initialItem: selectedDateIndex);
+    final hourController = FixedExtentScrollController(initialItem: selectedHour);
+    final minuteController = FixedExtentScrollController(initialItem: selectedMinute);
+
+    void syncSelection({bool jumpToMatch = false}) {
+      final date = dates[selectedDateIndex];
+      final candidate = DateTime(date.year, date.month, date.day, selectedHour, selectedMinute);
+      final clamped = _clampDateTime(candidate, minimumDate, maximumDate);
+      selected = clamped;
+      if (clamped == candidate) return;
+      selectedDateIndex = _dateIndexFor(clamped, minDateOnly, dates.length);
+      selectedHour = clamped.hour;
+      selectedMinute = clamped.minute;
+      if (jumpToMatch) {
+        dateController.jumpToItem(selectedDateIndex);
+        hourController.jumpToItem(selectedHour);
+        minuteController.jumpToItem(selectedMinute);
+      }
+    }
+
+    syncSelection(jumpToMatch: true);
+    return showModalBottomSheet<DateTime>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            void setToNow() {
+              final now = DateTime.now();
+              final nowValue = _clampDateTime(now, minimumDate, maximumDate);
+              selectedDateIndex = _dateIndexFor(nowValue, minDateOnly, dates.length);
+              selectedHour = nowValue.hour;
+              selectedMinute = nowValue.minute;
+              dateController.jumpToItem(selectedDateIndex);
+              hourController.jumpToItem(selectedHour);
+              minuteController.jumpToItem(selectedMinute);
+              setSheetState(() {
+                selected = nowValue;
+              });
+            }
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: surfaceDarkAlt,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: TextButton.styleFrom(foregroundColor: mutedText),
+                            child: const Text('キャンセル'),
+                          ),
+                          TextButton(
+                            onPressed: setToNow,
+                            style: TextButton.styleFrom(foregroundColor: primary),
+                            child: const Text('現在時刻'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(selected),
+                            style: TextButton.styleFrom(foregroundColor: primary),
+                            child: const Text('完了'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: borderDark),
+                    SizedBox(
+                      height: 220,
+                      child: CupertinoTheme(
+                        data: const CupertinoThemeData(brightness: Brightness.dark),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: CupertinoPicker(
+                                scrollController: dateController,
+                                itemExtent: 36,
+                                backgroundColor: surfaceDarkAlt,
+                                onSelectedItemChanged: (index) {
+                                  selectedDateIndex = index;
+                                  syncSelection(jumpToMatch: true);
+                                },
+                                children: [
+                                  for (final date in dates)
+                                    Center(
+                                      child: Text(
+                                        _formatPickerDate(date),
+                                        style: const TextStyle(color: Colors.white, fontSize: 18),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: CupertinoPicker(
+                                scrollController: hourController,
+                                itemExtent: 36,
+                                backgroundColor: surfaceDarkAlt,
+                                onSelectedItemChanged: (index) {
+                                  selectedHour = index;
+                                  syncSelection(jumpToMatch: true);
+                                },
+                                children: [
+                                  for (var hour = 0; hour < 24; hour += 1)
+                                    Center(
+                                      child: Text(
+                                        hour.toString().padLeft(2, '0'),
+                                        style: const TextStyle(color: Colors.white, fontSize: 18),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 16,
+                              child: Center(
+                                child: Text(
+                                  ':',
+                                  style: TextStyle(color: mutedText, fontSize: 20),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: CupertinoPicker(
+                                scrollController: minuteController,
+                                itemExtent: 36,
+                                backgroundColor: surfaceDarkAlt,
+                                onSelectedItemChanged: (index) {
+                                  selectedMinute = index;
+                                  syncSelection(jumpToMatch: true);
+                                },
+                                children: [
+                                  for (var minute = 0; minute < 60; minute += 1)
+                                    Center(
+                                      child: Text(
+                                        minute.toString().padLeft(2, '0'),
+                                        style: const TextStyle(color: Colors.white, fontSize: 18),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _pickPublishAt() async {
     final now = DateTime.now();
     final base = _publishAt ?? now;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: base.hour, minute: base.minute),
+    final minimumDate = now;
+    final maximumDate = now.add(const Duration(days: 90));
+    final selected = await _showWheelDateTimePicker(
+      initialDateTime: base,
+      minimumDate: minimumDate,
+      maximumDate: maximumDate,
     );
-    if (time == null) return;
+    if (selected == null) {
+      return;
+    }
     setState(() {
-      _publishAt = DateTime(
-        base.year,
-        base.month,
-        base.day,
-        time.hour,
-        time.minute,
-      );
+      _publishAt = selected;
       _publishAtError = null;
     });
   }
@@ -589,30 +773,17 @@ class _CreateAnnouncementScreenState extends ConsumerState<CreateAnnouncementScr
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _pickDate,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF2B3546)),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: Text(_publishAt == null ? '日付を選ぶ' : _formatDate(_publishAt!)),
-                        ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _pickPublishAt,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF2B3546)),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _pickTime,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF2B3546)),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: Text(_publishAt == null ? '時間を選ぶ' : _formatTime(_publishAt!)),
-                        ),
-                      ),
-                    ],
+                      child: Text(_publishAt == null ? '日付・時間を選ぶ' : _formatPublishAt(_publishAt!)),
+                    ),
                   ),
                   if (_publishAtError != null) ...[
                     const SizedBox(height: 8),
