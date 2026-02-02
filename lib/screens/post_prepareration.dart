@@ -274,7 +274,7 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
         border: Border.all(color: const Color(0xFF123C3A)),
       ),
       child: const Text(
-        '投稿手順:\n① 本文をコピーする ② シェアボタンを押す ③ SNSが開いたら画像・本文を確認して投稿！',
+        '投稿手順:\n① 本文をコピーする ② シェアボタンを押す ③ SNSが開いたら画像・本文を確認して投稿！④ アプリに戻って表示される確認ダイアログ「削除」をタップして完了。',
         style: TextStyle(
           fontSize: 12,
           height: 1.4,
