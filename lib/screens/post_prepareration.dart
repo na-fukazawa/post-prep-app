@@ -509,6 +509,8 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
           style: ElevatedButton.styleFrom(
             backgroundColor: primary,
             foregroundColor: Colors.black,
+            disabledBackgroundColor: const Color(0xFF0D2A2F),
+            disabledForegroundColor: Colors.white70,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
