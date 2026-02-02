@@ -497,15 +497,18 @@ class _PostPreparerationScreenState extends ConsumerState<PostPreparerationScree
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          onPressed: isPosted
-              ? null
-              : () async {
-                  await ref.read(draftListProvider.notifier).markPosted(draft);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('投稿済みに更新しました')));
-                },
-          icon: const Icon(Icons.check_circle),
-          label: Text(isPosted ? '投稿済み' : '投稿完了としてマーク'),
+          onPressed: () async {
+            if (isPosted) {
+              await ref.read(draftListProvider.notifier).markScheduled(draft);
+            } else {
+              await ref.read(draftListProvider.notifier).markPosted(draft);
+            }
+            if (!context.mounted) return;
+            final message = isPosted ? '投稿済みを解除しました' : '投稿済みに更新しました';
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+          },
+          icon: Icon(isPosted ? Icons.undo_rounded : Icons.check_circle),
+          label: Text(isPosted ? '投稿済み（タップで戻す）' : '投稿完了としてマーク'),
           style: ElevatedButton.styleFrom(
             backgroundColor: primary,
             foregroundColor: Colors.black,
