@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/draft_providers.dart';
 import '../services/draft_store.dart';
-import 'post_prepareration.dart';
+import '../widgets/announcement_card.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({Key? key}) : super(key: key);
@@ -15,7 +15,6 @@ class CalendarScreen extends ConsumerStatefulWidget {
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   static const Color primary = Color(0xFF00FFCC);
   static const Color backgroundDark = Color(0xFF0E121A);
-  static const Color surfaceDark = Color(0xFF161B26);
   static const Color surfaceDarkElevated = Color(0xFF1B2230);
   static const Color mutedText = Color(0xFF9AA3B2);
   static const Color subduedText = Color(0xFF7C8595);
@@ -273,80 +272,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       itemCount: drafts.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final draft = drafts[index];
-        final time = _formatTimeLabel(draft.publishAt);
-        final statusLabel = _statusLabel(draft.status);
-        final statusColor = _statusColor(draft.status);
-        final subtitle = _subtitleFromDraft(draft);
-
-        return InkWell(
-          onTap: () => _openDetail(draft),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: surfaceDark,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF1F2735)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _titleFromDraft(draft),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      time,
-                      style: const TextStyle(fontSize: 11, color: subduedText),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: mutedText),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+        return AnnouncementCard(draft: drafts[index]);
       },
     );
-  }
-
-  Future<void> _openDetail(Draft draft) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PostPreparerationScreen(draftId: draft.id)),
-    );
-    if (!mounted) return;
-    await ref.read(draftListProvider.notifier).refresh();
   }
 
   List<DateTime?> _buildMonthCells(DateTime month) {
@@ -413,54 +341,4 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return '$month/$day';
   }
 
-  String _formatTimeLabel(int millis) {
-    final date = DateTime.fromMillisecondsSinceEpoch(millis);
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-  String _titleFromDraft(Draft draft) {
-    if (draft.title.trim().isNotEmpty) return draft.title.trim();
-    final raw = draft.rawText.trim();
-    if (raw.isEmpty) return '無題の告知';
-    final firstLine = raw.split(RegExp(r'\r?\n')).first.trim();
-    return firstLine.isEmpty ? '無題の告知' : firstLine;
-  }
-
-  String _subtitleFromDraft(Draft draft) {
-    final base = draft.generated.trim().isNotEmpty ? draft.generated : draft.rawText;
-    final normalized = base.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return normalized.isEmpty ? '内容が未入力です。' : normalized;
-  }
-
-  String _statusLabel(String status) {
-    switch (status) {
-      case 'scheduled':
-        return '予約済み';
-      case 'draft':
-        return '下書き';
-      case 'posted':
-        return '投稿済み';
-      case 'failed':
-        return '投稿失敗';
-      default:
-        return '未設定';
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'scheduled':
-        return primary;
-      case 'draft':
-        return mutedText;
-      case 'posted':
-        return const Color(0xFF6F7A8D);
-      case 'failed':
-        return Colors.redAccent;
-      default:
-        return mutedText;
-    }
-  }
 }
