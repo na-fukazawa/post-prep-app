@@ -1,10 +1,8 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
-import '../screens/post_prepareration.dart';
-import 'app_navigator.dart';
 import 'draft_store.dart';
 
 class NotificationService {
@@ -17,8 +15,11 @@ class NotificationService {
   static const String _channelDescription = 'Show a notification at publish time';
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final StreamController<String> _tapStream = StreamController<String>.broadcast();
   bool _initialized = false;
   String? _launchPayload;
+
+  Stream<String> get tapStream => _tapStream.stream;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -125,23 +126,21 @@ class NotificationService {
       _launchPayload = launchDetails?.notificationResponse?.payload;
     }
     final payload = _launchPayload;
-    if (payload == null || payload.isEmpty) return;
     _launchPayload = null;
-    _handleNotificationTap(payload);
+    if (payload == null || payload.isEmpty) return;
+    if (_tapStream.hasListener) {
+      _tapStream.add(payload);
+    }
   }
 
   void _handleNotificationTap(String? payload) {
     if (payload == null || payload.isEmpty) return;
-    final navigator = rootNavigatorKey.currentState;
-    if (navigator == null) {
+    if (_tapStream.hasListener) {
+      _launchPayload = null;
+      _tapStream.add(payload);
+    } else {
       _launchPayload = payload;
-      return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      navigator.push(
-        MaterialPageRoute(builder: (_) => PostPreparerationScreen(draftId: payload)),
-      );
-    });
   }
 
   int _notificationIdFromDraftId(String draftId) {

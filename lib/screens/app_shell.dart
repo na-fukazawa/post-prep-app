@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'app_setting.dart';
 import 'calendar_screen.dart';
+import 'post_prepareration.dart';
 import 'schduleed_annoucements.dart';
 import '../services/notification_service.dart';
 
@@ -15,6 +17,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   static const Color primary = Color(0xFF00FFCC);
 
   int _index = 0;
+  late final StreamSubscription<String> _notificationSub;
 
   final List<Widget> _screens = const [
     SchduleedAnnoucementsScreen(),
@@ -26,6 +29,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _notificationSub = NotificationService.instance.tapStream.listen(_openFromNotification);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.handleInitialNotificationTap();
     });
@@ -34,6 +38,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _notificationSub.cancel();
     super.dispose();
   }
 
@@ -129,5 +134,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _select(int index) {
     if (index == _index) return;
     setState(() => _index = index);
+  }
+
+  void _openFromNotification(String draftId) {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => PostPreparerationScreen(draftId: draftId)),
+    );
   }
 }
