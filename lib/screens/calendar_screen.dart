@@ -22,6 +22,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   late DateTime _focusedMonth;
   late DateTime _selectedDate;
+  double _horizontalDragDistance = 0;
+  int _monthChangeDirection = 1;
 
   @override
   void initState() {
@@ -164,68 +166,96 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   Widget _buildMonthGrid(Map<int, List<Draft>> byDate) {
     final cells = _buildMonthCells(_focusedMonth);
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: cells.length,
-      itemBuilder: (context, index) {
-        final date = cells[index];
-        if (date == null) {
-          return const SizedBox.shrink();
-        }
-        final key = _dateKey(date);
-        final hasDrafts = (byDate[key] ?? []).isNotEmpty;
-        final isSelected = _isSameDay(date, _selectedDate);
-        final isToday = _isSameDay(date, DateTime.now());
+    final currentKey = ValueKey<int>(_focusedMonth.year * 100 + _focusedMonth.month);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
+      onHorizontalDragUpdate: (details) => _horizontalDragDistance += details.delta.dx,
+      onHorizontalDragEnd: _handleHorizontalDragEnd,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final incoming = child.key == currentKey;
+          final direction = _monthChangeDirection == 0 ? 1 : _monthChangeDirection;
+          final offset = incoming
+              ? Offset(direction.toDouble(), 0)
+              : Offset(-direction.toDouble(), 0);
+          final position = Tween<Offset>(begin: offset, end: Offset.zero).animate(animation);
 
-        return GestureDetector(
-          onTap: () => setState(() => _selectedDate = date),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected ? primary : surfaceDarkElevated,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? Colors.transparent : const Color(0xFF232C3B),
-              ),
+          return ClipRect(
+            child: SlideTransition(
+              position: position,
+              child: FadeTransition(opacity: animation, child: child),
             ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Text(
-                  '${date.day}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected
-                        ? Colors.black
-                        : isToday
-                            ? primary
-                            : Colors.white,
+          );
+        },
+        child: GridView.builder(
+          key: currentKey,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
+            childAspectRatio: 1.1,
+          ),
+          itemCount: cells.length,
+          itemBuilder: (context, index) {
+            final date = cells[index];
+            if (date == null) {
+              return const SizedBox.shrink();
+            }
+            final key = _dateKey(date);
+            final hasDrafts = (byDate[key] ?? []).isNotEmpty;
+            final isSelected = _isSameDay(date, _selectedDate);
+            final isToday = _isSameDay(date, DateTime.now());
+
+            return GestureDetector(
+              onTap: () => setState(() => _selectedDate = date),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? primary : surfaceDarkElevated,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? Colors.transparent : const Color(0xFF232C3B),
                   ),
                 ),
-                if (hasDrafts)
-                  Positioned(
-                    bottom: 6,
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.black : primary,
-                        shape: BoxShape.circle,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? Colors.black
+                            : isToday
+                                ? primary
+                                : Colors.white,
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
+                    if (hasDrafts)
+                      Positioned(
+                        bottom: 6,
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.black : primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -357,9 +387,24 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   void _changeMonth(int delta) {
     setState(() {
+      _monthChangeDirection = delta.sign == 0 ? 1 : delta.sign;
       _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + delta, 1);
       _selectedDate = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     });
+  }
+
+  void _handleHorizontalDragEnd(DragEndDetails details) {
+    const minDistance = 40.0;
+    const minVelocity = 200.0;
+    final velocity = details.primaryVelocity ?? 0.0;
+
+    if (_horizontalDragDistance > minDistance || velocity > minVelocity) {
+      _changeMonth(-1);
+    } else if (_horizontalDragDistance < -minDistance || velocity < -minVelocity) {
+      _changeMonth(1);
+    }
+
+    _horizontalDragDistance = 0;
   }
 
   String _formatDateLabel(DateTime date) {
